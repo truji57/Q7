@@ -5,8 +5,13 @@ __pycache__/
 dist/
 .venv/
 venv/
+# DB (sensitive data)
+backend/q7.db
 *.db-shm
 *.db-wal
+
+# Recursos (local configs)
+Recursos/
 
 # Node
 node_modules/
@@ -29,6 +34,11 @@ Thumbs.db
 
 # Backups
 .backup/
+
+# Project context (local only)
+AGENTS.md
+PENDIENTES.md
+opencode.json
 *.ex5
 *.backup
 
