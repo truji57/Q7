@@ -49,6 +49,7 @@ class AccountUpdate(BaseModel):
     name: Optional[str] = None
     nt8_account: Optional[str] = None
     ct: Optional[int] = None
+    max_positions: Optional[int] = None
     pdll: Optional[float] = None
     pdpt: Optional[float] = None
     tpc: Optional[float] = None

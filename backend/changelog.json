@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.15",
+    "date": "2026-07-29",
+    "description": "Fix Apply to all (MXC), PDLL/PDPT close_all sin guard, signal archive antes de procesar"
+  },
+  {
     "version": "v0.14",
     "date": "2026-07-29",
     "description": "Bugfixes criticos: _add_log restaurado (estaba borrado), signal replay loop arreglado (mover archivo antes de procesar), PDLL/PDPT ahora cierra posiciones sin depender de status"
