@@ -1,9 +1,13 @@
 const BASE = '/api';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const hasBody = options?.body;
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers: {
+      ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+      ...(options?.headers || {}),
+    },
   });
   if (!res.ok) { const err = await res.text(); throw new Error(err || res.statusText); }
   return res.json();
@@ -30,4 +34,5 @@ export const api = {
 
   getConfig: () => request<any>('/config'),
   updateConfig: (data: any) => request<any>('/config', { method: 'PUT', body: JSON.stringify(data) }),
+  getVersion: () => request<{version: string; date: string}>('/version'),
 };

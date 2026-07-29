@@ -431,6 +431,7 @@ class OrchestratorEngine:
             self._sync_balances(db)
             return {
                 "groups": [svc.to_group_dict(g) for g in svc.get_all_groups()],
+                "version": self._get_version(),
                 "timestamp": datetime.utcnow().isoformat(),
                 "nt8_connected": self._is_nt8_connected(),
                 "engine_active": self._is_engine_active(),
@@ -452,7 +453,17 @@ class OrchestratorEngine:
         except:
             return False
 
-    def _add_log(self, msg: str):
+    def _get_version(self) -> str:
+        try:
+            cl_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "changelog.json")
+            if os.path.exists(cl_path):
+                with open(cl_path, "r") as f:
+                    entries = json.load(f)
+                    if entries:
+                        return entries[0].get("version", "")
+        except:
+            pass
+        return ""
         self.signal_log.append(f"{datetime.now().strftime('%H:%M:%S')} {msg}")
         if len(self.signal_log) > 100:
             self.signal_log = self.signal_log[-50:]

@@ -45,6 +45,7 @@ export interface Group {
 
 export interface DashboardState {
   groups: Group[];
+  version: string;
   timestamp: string;
   nt8_connected: boolean;
   engine_active: boolean;

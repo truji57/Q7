@@ -6,10 +6,14 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
-      '/api': 'http://127.0.0.1:8005',
+      '/api': {
+        target: 'http://127.0.0.1:8005',
+        changeOrigin: true,
+      },
       '/ws': {
         target: 'ws://127.0.0.1:8005',
-        ws: true
+        ws: true,
+        changeOrigin: true,
       }
     }
   }

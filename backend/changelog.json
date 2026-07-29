@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.13",
+    "date": "2026-07-29",
+    "description": "Version en sidebar: leida del changelog via WebSocket, fix proxy Vite con changeOrigin"
+  },
+  {
     "version": "v0.12",
     "date": "2026-07-29",
     "description": "Limpieza post-compactacion: puerto frontend 5174, eliminado Q7Bridge.cs (TCP muerto), revertido Copy to NT8 del Settings, creado .gitignore, AGENTS.md con contexto real del proyecto, PENDIENTES.md, opencode.json con comando /commit, y repo GitHub privado"

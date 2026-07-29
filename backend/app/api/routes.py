@@ -199,3 +199,20 @@ def update_config(data: dict, db: Session = Depends(get_db)):
     for k, v in data.items():
         svc.set_config(k, str(v))
     return {"ok": True}
+
+
+# ========== VERSION ==========
+
+@router.get("/version")
+def get_version():
+    import os as _os, json as _json
+    cl_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(__file__))), "changelog.json")
+    if _os.path.exists(cl_path):
+        try:
+            with open(cl_path, "r") as f:
+                entries = _json.load(f)
+                if entries:
+                    return {"version": entries[0]["version"], "date": entries[0].get("date", "")}
+        except:
+            pass
+    return {"version": "v0.0", "date": ""}
