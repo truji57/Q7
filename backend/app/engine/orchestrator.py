@@ -144,6 +144,10 @@ class OrchestratorEngine:
                 if signal is None:
                     continue
 
+                # Move FIRST — prevent re-processing if something fails
+                dest = os.path.join(processed_dir, os.path.basename(filepath))
+                os.replace(filepath, dest)
+
                 sig_type = signal.get("type", "").upper()
 
                 if sig_type == "CYCLE_START":
@@ -153,8 +157,8 @@ class OrchestratorEngine:
                     self._handle_cycle_end(signal)
                     self._add_log(f"CYCLE_END | {signal.get('instrument','?')}")
                 elif sig_type == "ADD_POSITION":
-                    self._add_log(f"ADD_POSITION {signal.get('instrument','?')}")
                     self._handle_add_position(signal)
+                    self._add_log(f"ADD_POSITION {signal.get('instrument','?')}")
                 elif sig_type == "HEARTBEAT":
                     self.mt5_connected = True
                     self.last_mt5_hb = datetime.now().timestamp()
@@ -162,8 +166,6 @@ class OrchestratorEngine:
                     self.on_signal(signal)
                     self._add_log(f"SIGNAL {signal.get('action','?')}")
 
-                dest = os.path.join(processed_dir, os.path.basename(filepath))
-                os.replace(filepath, dest)
                 self.last_signal_time = datetime.utcnow().isoformat()
             except Exception as e:
                 log.error(f"Signal error: {e}")
@@ -464,6 +466,8 @@ class OrchestratorEngine:
         except:
             pass
         return ""
+
+    def _add_log(self, msg: str):
         self.signal_log.append(f"{datetime.now().strftime('%H:%M:%S')} {msg}")
         if len(self.signal_log) > 100:
             self.signal_log = self.signal_log[-50:]
@@ -632,15 +636,15 @@ class OrchestratorEngine:
 
             if total_pnl >= acc.pdpt and acc.status in ("PENDING", "TRADING"):
                 acc.status = "TP_TOUCHED"
-                if pos_list:
-                    self._write_trade(name, "", "", 0, 0, 0, close_all=True)
+                self._write_trade(name, "", "", 0, 0, 0, close_all=True)
+                self._last_close_time[name] = datetime.now().timestamp()
                 self._add_log(f"{name}: DAILY TP +${total_pnl:.0f} ≥ +${acc.pdpt:.0f} → rotating")
                 log.info(f"TP {name}: total={total_pnl:.0f} >= {acc.pdpt}")
 
             elif total_pnl <= -acc.pdll and acc.status in ("PENDING", "TRADING"):
                 acc.status = "SL_TOUCHED"
-                if pos_list:
-                    self._write_trade(name, "", "", 0, 0, 0, close_all=True)
+                self._write_trade(name, "", "", 0, 0, 0, close_all=True)
+                self._last_close_time[name] = datetime.now().timestamp()
                 self._add_log(f"{name}: DAILY SL -${abs(total_pnl):.0f} ≥ -${acc.pdll:.0f} → rotating")
                 log.info(f"SL {name}: total={total_pnl:.0f} <= -{acc.pdll}")
 

@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.14",
+    "date": "2026-07-29",
+    "description": "Bugfixes criticos: _add_log restaurado (estaba borrado), signal replay loop arreglado (mover archivo antes de procesar), PDLL/PDPT ahora cierra posiciones sin depender de status"
+  },
+  {
     "version": "v0.13",
     "date": "2026-07-29",
     "description": "Version en sidebar: leida del changelog via WebSocket, fix proxy Vite con changeOrigin"
