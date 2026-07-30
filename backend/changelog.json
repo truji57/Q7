@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.21",
+    "date": "2026-07-29",
+    "description": "gitignore install*.bat (cubre rename del instalador)"
+  },
+  {
     "version": "v0.20",
     "date": "2026-07-29",
     "description": "Updater: git stash automatico antes de pull para evitar conflictos locales"
