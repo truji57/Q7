@@ -45,10 +45,23 @@ def main():
 
     # 3. Pull
     print("[3/4] Descargando actualizacion...")
+    has_changes = bool(_run(["git", "status", "--porcelain"]).stdout.strip())
+    stashed = False
+    if has_changes:
+        r = _run(["git", "stash", "--include-untracked"], timeout=30)
+        stashed = r.returncode == 0
+        if stashed:
+            print("  Cambios locales guardados temporalmente.")
+
     r = _run(["git", "pull", "--ff-only", "origin", BRANCH], timeout=60)
     if r.returncode != 0:
         print("  No se pudo actualizar. Prueba con git pull manual.")
+        if stashed:
+            _run(["git", "stash", "pop"])
         return False
+
+    if stashed:
+        _run(["git", "stash", "pop"])
 
     # 4. Install dependencies if needed
     print("[4/4] Instalando dependencias...")

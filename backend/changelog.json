@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.20",
+    "date": "2026-07-29",
+    "description": "Updater: git stash automatico antes de pull para evitar conflictos locales"
+  },
+  {
     "version": "v0.19",
     "date": "2026-07-29",
     "description": "Fix updater.py cwd duplicado, setdefault en _run()"
