@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.19",
+    "date": "2026-07-29",
+    "description": "Fix updater.py cwd duplicado, setdefault en _run()"
+  },
+  {
     "version": "v0.18",
     "date": "2026-07-29",
     "description": "SignalCatcher en mt5/, instrucciones EA en Settings, check-update contra GitHub tags"

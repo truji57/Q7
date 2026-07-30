@@ -12,7 +12,8 @@ BRANCH = os.getenv("Q7_BRANCH", "master")
 
 
 def _run(cmd, **kw):
-    r = subprocess.run(cmd, capture_output=True, text=True, cwd=BASE_DIR, **kw)
+    kw.setdefault("cwd", BASE_DIR)
+    r = subprocess.run(cmd, capture_output=True, text=True, **kw)
     if r.returncode != 0:
         print(f"  ERROR: {r.stderr.strip()}")
     return r
