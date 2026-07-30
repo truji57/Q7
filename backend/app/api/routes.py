@@ -218,6 +218,19 @@ def get_version():
     return {"version": "v0.0", "date": ""}
 
 
+@router.get("/changelog")
+def get_changelog():
+    import os as _os, json as _json
+    cl_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(__file__))), "changelog.json")
+    if _os.path.exists(cl_path):
+        try:
+            with open(cl_path, "r") as f:
+                return _json.load(f)
+        except:
+            pass
+    return []
+
+
 # ========== INSTALL ==========
 
 @router.post("/config/install-addon")
@@ -240,3 +253,37 @@ def install_addon():
         return {"ok": True, "message": "Copied to NT8 AddOns folder. Compile with F5."}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+# ========== UPDATE CHECK ==========
+
+@router.get("/check-update")
+def check_update():
+    import os as _os, json as _json, urllib.request as _req
+
+    # Get local version
+    local = "v0.0"
+    cl_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(__file__))), "changelog.json")
+    if _os.path.exists(cl_path):
+        try:
+            with open(cl_path, "r") as f:
+                entries = _json.load(f)
+                if entries:
+                    local = entries[0].get("version", "v0.0")
+        except:
+            pass
+
+    # Get latest tag from GitHub
+    remote = ""
+    try:
+        url = "https://api.github.com/repos/truji57/Q7/tags?per_page=1"
+        req = _req.Request(url, headers={"User-Agent": "Q7/1.0"})
+        with _req.urlopen(req, timeout=5) as r:
+            tags = _json.loads(r.read())
+            if tags:
+                remote = tags[0].get("name", "")
+    except:
+        pass
+
+    has_update = remote and remote != local
+    return {"local": local, "remote": remote, "has_update": has_update}

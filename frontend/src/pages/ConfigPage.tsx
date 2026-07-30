@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Download } from 'lucide-react';
+import { Save, Download, AlertCircle } from 'lucide-react';
 import { api } from '../lib/api';
 import { useStore } from '../store';
 
@@ -9,6 +9,8 @@ export default function ConfigPage() {
   const [debugMode, setDebugMode] = useState(false);
   const [saved, setSaved] = useState(false);
   const [installed, setInstalled] = useState(false);
+  const [changelog, setChangelog] = useState<{version: string; date: string; description: string}[]>([]);
+  const [updateAvailable, setUpdateAvailable] = useState<string | null>(null);
   const setDebug = useStore((s) => s.setDebugMode);
 
   useEffect(() => {
@@ -16,6 +18,15 @@ export default function ConfigPage() {
       setBridgeHost(c.bridge_host || '127.0.0.1');
       setBridgePort(c.bridge_port || '5556');
       setDebugMode(c.debug_mode === 'true');
+    }).catch(() => {});
+    api.getChangelog().then((data) => {
+      console.log('Changelog loaded:', data);
+      setChangelog(data);
+    }).catch((e) => {
+      console.error('Changelog error:', e);
+    });
+    api.checkUpdate().then((u) => {
+      if (u.has_update) setUpdateAvailable(u.remote);
     }).catch(() => {});
   }, []);
 
@@ -123,6 +134,32 @@ export default function ConfigPage() {
             </button>
           </div>
         </div>
+
+        {updateAvailable && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center gap-2">
+            <AlertCircle size={14} className="text-amber-400 shrink-0" />
+            <span className="text-xs text-amber-300">
+              Nueva version disponible: <strong className="text-amber-200">{updateAvailable}</strong> — ejecuta <code className="text-amber-400">updater.bat</code> para actualizar
+            </span>
+          </div>
+        )}
+
+        {changelog.length > 0 ? (
+          <div className="bg-[#0e0e18] border border-[#1c1c2a] rounded-lg p-6 mt-4">
+            <h3 className="text-sm font-semibold text-zinc-300 mb-3">Historial de versiones</h3>
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {changelog.map((entry, i) => (
+                <div key={i} className={`pb-3 ${i < changelog.length - 1 ? 'border-b border-[#1a1a2a]' : ''}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-semibold text-[#4f8cff]">{entry.version}</span>
+                    <span className="text-[10px] text-zinc-600">{entry.date}</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">{entry.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

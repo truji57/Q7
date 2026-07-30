@@ -35,5 +35,7 @@ export const api = {
   getConfig: () => request<any>('/config'),
   updateConfig: (data: any) => request<any>('/config', { method: 'PUT', body: JSON.stringify(data) }),
   getVersion: () => request<{version: string; date: string}>('/version'),
+  getChangelog: () => request<{version: string; date: string; description: string}[]>('/changelog'),
+  checkUpdate: () => request<{local: string; remote: string; has_update: boolean}>('/check-update'),
   installAddon: () => request<any>('/config/install-addon', { method: 'POST' }),
 };
