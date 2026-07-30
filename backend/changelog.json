@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.18",
+    "date": "2026-07-29",
+    "description": "SignalCatcher en mt5/, instrucciones EA en Settings, check-update contra GitHub tags"
+  },
+  {
     "version": "v0.17",
     "date": "2026-07-29",
     "description": "Changelog en Settings, boton Install AddOn, aviso de nueva version disponible, Settings en espanol"

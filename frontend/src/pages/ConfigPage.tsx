@@ -97,13 +97,16 @@ export default function ConfigPage() {
         <div className="border-t border-[#1a1a2a] pt-5">
           <h3 className="text-sm font-semibold text-zinc-300 mb-2">Como funciona</h3>
           <p className="text-[10px] text-zinc-500 leading-relaxed">
-            <strong className="text-zinc-400">1.</strong> El EA <code className="text-zinc-400">Q7_SignalCatcher</code> de MT5 detecta operaciones y envia señales.<br />
+            <strong className="text-zinc-400">1.</strong> El EA <code className="text-zinc-400">Q7_SignalCatcher.mq5</code> de MT5 detecta operaciones y envia señales.<br />
             <strong className="text-zinc-400">2.</strong> El Orquestrador las recibe y escribe comandos en <code className="text-zinc-400">Q7\commands\</code>.<br />
             <strong className="text-zinc-400">3.</strong> El AddOn de NT8 lee los comandos y ejecuta los trades.<br />
             <strong className="text-zinc-400">4.</strong> El AddOn escribe el estado en <code className="text-zinc-400">Q7\status\</code> y el Orquestrador lo sincroniza.
           </p>
           <p className="text-[10px] text-zinc-500 mt-3 p-2 bg-amber-500/5 border border-amber-500/20 rounded">
             El EA <code className="text-amber-400">Q7_SignalCatcher.mq5</code> debe estar funcionando en MT5 para que el Orquestrador reciba señales de trading.
+          </p>
+          <p className="text-[10px] text-zinc-600 mt-2">
+            El archivo <code className="text-zinc-400">Q7_SignalCatcher.mq5</code> esta en la carpeta <code className="text-zinc-400">mt5/</code> del proyecto. Copialo a <code className="text-zinc-400">MQL5\Experts\</code> de MT5 y compila con <kbd className="text-zinc-400">F7</kbd>.
           </p>
         </div>
 
