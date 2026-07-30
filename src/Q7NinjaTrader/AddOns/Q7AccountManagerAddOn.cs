@@ -38,7 +38,7 @@ namespace NinjaTrader.NinjaScript.AddOns
             {
                 Print("Q7 Bridge: " + GetAllAccountNames());
                 WriteStatus("Bridge ready");
-                pollTimer = new System.Threading.Timer(_ => OnPoll(), null, 1000, 1000);
+                pollTimer = new System.Threading.Timer(_ => OnPoll(), null, 200, 200);
             }
             else if (State == State.Terminated)
             {

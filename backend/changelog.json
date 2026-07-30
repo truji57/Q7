@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.22",
+    "date": "2026-07-29",
+    "description": "Polling 200ms en orchestrator + AddOn para reducir latencia [Requiere recompilar el AddOn en NT8]"
+  },
+  {
     "version": "v0.21",
     "date": "2026-07-29",
     "description": "gitignore install*.bat (cubre rename del instalador)"

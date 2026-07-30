@@ -32,7 +32,7 @@ async def broadcast_loop():
                 await manager.broadcast(state)
         except Exception as e:
             log.error(f"Broadcast error: {e}")
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.2)
 
 
 @asynccontextmanager
