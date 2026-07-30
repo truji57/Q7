@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save } from 'lucide-react';
+import { Save, Download } from 'lucide-react';
 import { api } from '../lib/api';
 import { useStore } from '../store';
 
@@ -8,6 +8,7 @@ export default function ConfigPage() {
   const [bridgePort, setBridgePort] = useState('5556');
   const [debugMode, setDebugMode] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [installed, setInstalled] = useState(false);
   const setDebug = useStore((s) => s.setDebugMode);
 
   useEffect(() => {
@@ -33,12 +34,26 @@ export default function ConfigPage() {
     }
   };
 
+  const handleInstallAddon = async () => {
+    try {
+      const r = await api.installAddon();
+      if (r.ok) {
+        setInstalled(true);
+        setTimeout(() => setInstalled(false), 3000);
+      } else {
+        alert(r.error);
+      }
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
   return (
     <div className="max-w-2xl">
 
       <div className="bg-[#0e0e18] border border-[#1c1c2a] rounded-lg p-6 space-y-5">
         <div>
-          <h3 className="text-sm font-semibold text-zinc-300 mb-4">NT8 Bridge Connection</h3>
+          <h3 className="text-sm font-semibold text-zinc-300 mb-4">Conexion NT8 Bridge</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] text-zinc-500 mb-1">Host</label>
@@ -59,21 +74,33 @@ export default function ConfigPage() {
               />
             </div>
           </div>
-          <p className="text-[10px] text-zinc-600 mt-2">
-            Q7AccountManagerAddOn in NinjaTrader must be running.
-            Copy <code className="text-zinc-500">src/Q7NinjaTrader/AddOns/Q7AccountManagerAddOn.cs</code> to <code className="text-zinc-500">Documents\NinjaTrader 8\bin\Custom\AddOns\</code>
+          <button
+            onClick={handleInstallAddon}
+            className="mt-3 flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 text-green-400 rounded-md text-xs font-semibold hover:bg-green-500/20 transition-colors"
+          >
+            <Download size={13} />
+            {installed ? 'Copiado! Compila F5 en NT8' : 'Instalar AddOn en NT8'}
+          </button>
+        </div>
+
+        <div className="border-t border-[#1a1a2a] pt-5">
+          <h3 className="text-sm font-semibold text-zinc-300 mb-2">Como funciona</h3>
+          <p className="text-[10px] text-zinc-500 leading-relaxed">
+            <strong className="text-zinc-400">1.</strong> El EA <code className="text-zinc-400">Q7_SignalCatcher</code> de MT5 detecta operaciones y envia señales.<br />
+            <strong className="text-zinc-400">2.</strong> El Orquestrador las recibe y escribe comandos en <code className="text-zinc-400">Q7\commands\</code>.<br />
+            <strong className="text-zinc-400">3.</strong> El AddOn de NT8 lee los comandos y ejecuta los trades.<br />
+            <strong className="text-zinc-400">4.</strong> El AddOn escribe el estado en <code className="text-zinc-400">Q7\status\</code> y el Orquestrador lo sincroniza.
+          </p>
+          <p className="text-[10px] text-zinc-500 mt-3 p-2 bg-amber-500/5 border border-amber-500/20 rounded">
+            El EA <code className="text-amber-400">Q7_SignalCatcher.mq5</code> debe estar funcionando en MT5 para que el Orquestrador reciba señales de trading.
           </p>
         </div>
 
         <div className="border-t border-[#1a1a2a] pt-5">
-          <h3 className="text-sm font-semibold text-zinc-300 mb-4">NinjaTrader Setup</h3>
-          <ol className="text-xs text-zinc-500 space-y-2 list-decimal list-inside">
-            <li>Copy <code className="text-zinc-400">src/Q7NinjaTrader/AddOns/Q7AccountManagerAddOn.cs</code> to <code className="text-zinc-400">Documents\NinjaTrader 8\bin\Custom\AddOns\</code></li>
-            <li>Copy <code className="text-zinc-400">src/Q7NinjaTrader/Strategies/Q7SignalEngine.cs</code> to <code className="text-zinc-400">Documents\NinjaTrader 8\bin\Custom\Strategies\</code></li>
-            <li>Copy <code className="text-zinc-400">src/Q7NinjaTrader/Strategies/Q7TrendScalingEngine.cs</code> to <code className="text-zinc-400">Documents\NinjaTrader 8\bin\Custom\Strategies\</code></li>
-            <li>Open NinjaScript Editor → Compile (<kbd className="text-zinc-400">F5</kbd>)</li>
-            <li>Open an MNQ chart, add Q7SignalEngine as strategy, enable it</li>
-          </ol>
+          <h3 className="text-sm font-semibold text-zinc-300 mb-2">NinjaTrader</h3>
+          <p className="text-[10px] text-zinc-500">
+            Tras instalar el AddOn, abre el NinjaScript Editor y presiona <kbd className="text-zinc-400">F5</kbd> para compilar.
+          </p>
         </div>
 
         <div className="border-t border-[#1a1a2a] pt-5 flex justify-between items-center">

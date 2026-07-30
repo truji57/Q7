@@ -28,6 +28,7 @@ export interface Group {
   direction: string;
   mode: string;
   stop_on_reset: boolean;
+  reset_mode: string;
   include_in_fleet: boolean;
   schedule_enabled: boolean;
   schedule_start_h: number;

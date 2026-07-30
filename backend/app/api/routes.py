@@ -216,3 +216,27 @@ def get_version():
         except:
             pass
     return {"version": "v0.0", "date": ""}
+
+
+# ========== INSTALL ==========
+
+@router.post("/config/install-addon")
+def install_addon():
+    """Copia Q7AccountManagerAddOn.cs a la carpeta de NT8"""
+    import os as _os, shutil as _shutil
+
+    base = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(__file__))))
+    src = _os.path.join(base, "src", "Q7NinjaTrader", "AddOns", "Q7AccountManagerAddOn.cs")
+
+    if not _os.path.exists(src):
+        return {"ok": False, "error": "Source file not found"}
+
+    nt8_addons = _os.path.join(_os.path.expanduser("~"), "Documents", "NinjaTrader 8", "bin", "Custom", "AddOns")
+    _os.makedirs(nt8_addons, exist_ok=True)
+    dst = _os.path.join(nt8_addons, "Q7AccountManagerAddOn.cs")
+
+    try:
+        _shutil.copy2(src, dst)
+        return {"ok": True, "message": "Copied to NT8 AddOns folder. Compile with F5."}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}

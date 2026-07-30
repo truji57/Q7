@@ -83,6 +83,7 @@ def _run_migrations():
             "default_tpc": "ALTER TABLE groups ADD COLUMN default_tpc FLOAT DEFAULT 1500.0",
             "default_slc": "ALTER TABLE groups ADD COLUMN default_slc FLOAT DEFAULT 2000.0",
             "default_max_positions": "ALTER TABLE groups ADD COLUMN default_max_positions INTEGER DEFAULT 6",
+            "reset_mode": "ALTER TABLE groups ADD COLUMN reset_mode TEXT DEFAULT 'diario'",
         }
 
         # Rename old columns
@@ -103,6 +104,15 @@ def _run_migrations():
                     conn.execute(text(sql))
                 except:
                     pass
+
+        # Migrate stop_on_reset -> reset_mode (one-time data conversion)
+        if "stop_on_reset" in cols and "reset_mode" in [c["name"] for c in inspector.get_columns("groups")]:
+            try:
+                conn.execute(text(
+                    "UPDATE groups SET reset_mode = CASE WHEN stop_on_reset THEN 'manual' ELSE 'diario' END WHERE reset_mode IS NULL OR reset_mode = ''"
+                ))
+            except:
+                pass
 
     conn.commit()
     conn.close()

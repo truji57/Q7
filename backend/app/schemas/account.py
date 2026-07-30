@@ -66,6 +66,7 @@ class GroupSchema(BaseModel):
     direction: str
     mode: str
     stop_on_reset: bool
+    reset_mode: str = "diario"
     include_in_fleet: bool
     schedule_enabled: bool
     schedule_start_h: int
@@ -89,6 +90,7 @@ class GroupCreate(BaseModel):
     direction: str = "BOTH"
     mode: str = "SEQUENTIAL"
     stop_on_reset: bool = True
+    reset_mode: str = "diario"
 
 
 class GroupUpdate(BaseModel):
@@ -97,6 +99,7 @@ class GroupUpdate(BaseModel):
     direction: Optional[str] = None
     mode: Optional[str] = None
     stop_on_reset: Optional[bool] = None
+    reset_mode: Optional[str] = None
     include_in_fleet: Optional[bool] = None
     schedule_enabled: Optional[bool] = None
     schedule_start_h: Optional[int] = None

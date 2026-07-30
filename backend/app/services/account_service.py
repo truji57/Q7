@@ -108,6 +108,7 @@ class AccountService:
             "direction": g.direction,
             "mode": g.mode,
             "stop_on_reset": g.stop_on_reset,
+            "reset_mode": g.reset_mode or "diario",
             "include_in_fleet": g.include_in_fleet,
             "schedule_enabled": g.schedule_enabled,
             "schedule_start_h": g.schedule_start_h,

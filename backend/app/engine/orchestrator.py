@@ -182,20 +182,23 @@ class OrchestratorEngine:
                 svc.reset_daily()
 
                 groups = svc.get_all_groups()
-                active_group = next((g for g in groups if g.active), None)
-                if not active_group:
+                active_groups = [g for g in groups if g.active]
+                if not active_groups:
+                    log.warning("CYCLE_START: no active group")
                     return
 
-                # Check schedule
-                if not self._in_schedule(active_group):
+                # Find first active group that is in schedule and has available accounts
+                for active_group in active_groups:
+                    if not self._in_schedule(active_group):
+                        continue
+                    accounts = svc.get_accounts(active_group.id)
+                    account = next((a for a in accounts if a.enabled and a.status in ("PENDING", "TRADING")), None)
+                    if not account:
+                        continue
+                    self._start_cycle_on_account(account, signal)
                     return
 
-                accounts = svc.get_accounts(active_group.id)
-                account = next((a for a in accounts if a.enabled and a.status in ("PENDING", "TRADING")), None)
-                if not account:
-                    return
-
-                self._start_cycle_on_account(account, signal)
+                log.warning(f"CYCLE_START: no group in schedule with available accounts ({len(active_groups)} active)")
             finally:
                 db.close()
 
@@ -230,19 +233,16 @@ class OrchestratorEngine:
             try:
                 svc = AccountService(db)
                 groups = svc.get_all_groups()
-                active_group = next((g for g in groups if g.active), None)
-                if not active_group:
-                    return
-
-                # Check schedule
-                if not self._in_schedule(active_group):
-                    return
-
-                accounts = svc.get_accounts(active_group.id)
-                account = next((a for a in accounts if a.enabled and a.status in ("PENDING", "TRADING")), None)
-                if account:
-                    self._write_trade(account.nt8_account, "", "", 0, 0, 0, close_all=True)
-                    log.info(f"CYCLE_END: CLOSE_ALL on [{account.nt8_account}]")
+                active_groups = [g for g in groups if g.active]
+                for active_group in active_groups:
+                    if not self._in_schedule(active_group):
+                        continue
+                    accounts = svc.get_accounts(active_group.id)
+                    account = next((a for a in accounts if a.enabled and a.status in ("PENDING", "TRADING")), None)
+                    if account:
+                        self._write_trade(account.nt8_account, "", "", 0, 0, 0, close_all=True)
+                        log.info(f"CYCLE_END: CLOSE_ALL on [{account.nt8_account}]")
+                        break
             finally:
                 db.close()
 
@@ -253,24 +253,20 @@ class OrchestratorEngine:
             try:
                 svc = AccountService(db)
                 groups = svc.get_all_groups()
-                active_group = next((g for g in groups if g.active), None)
-                if not active_group:
-                    return
-
-                # Check schedule
-                if not self._in_schedule(active_group):
-                    return
-
-                accounts = svc.get_accounts(active_group.id)
-                account = next((a for a in accounts if a.enabled and a.status in ("PENDING", "TRADING")), None)
-                if not account:
-                    return
-
-                direction = self.current_trend
-                direction_str = "LONG" if direction > 0 else "SHORT"
-                ct = max(1, account.ct)
-                self._write_trade(account.nt8_account, "ENTER_" + direction_str, "MNQ 09-26", ct, 0, 0)
-                log.debug(f"ADD_POSITION: {account.nt8_account}")
+                active_groups = [g for g in groups if g.active]
+                for active_group in active_groups:
+                    if not self._in_schedule(active_group):
+                        continue
+                    accounts = svc.get_accounts(active_group.id)
+                    account = next((a for a in accounts if a.enabled and a.status in ("PENDING", "TRADING")), None)
+                    if not account:
+                        continue
+                    direction = self.current_trend
+                    direction_str = "LONG" if direction > 0 else "SHORT"
+                    ct = max(1, account.ct)
+                    self._write_trade(account.nt8_account, "ENTER_" + direction_str, "MNQ 09-26", ct, 0, 0)
+                    log.debug(f"ADD_POSITION: {account.nt8_account}")
+                    break
             finally:
                 db.close()
 
@@ -381,10 +377,29 @@ class OrchestratorEngine:
             state.pop("active_account_id", None)
             log.info(f"Group {group_id}: all accounts done")
             group = db.query(Group).filter(Group.id == group_id).first()
-            if group and group.stop_on_reset:
-                group.active = False
-                db.commit()
-                log.info(f"Group {group_id}: stopped (stop_on_reset)")
+            if group:
+                mode = group.reset_mode or "diario"
+                if mode == "manual":
+                    group.active = False
+                    db.commit()
+                    log.info(f"Group {group_id}: stopped (reset_mode=manual)")
+                elif mode == "continuo":
+                    # Reiniciar todas las cuentas a PENDING y volver a la primera
+                    svc = AccountService(db)
+                    for a in svc.get_accounts(group_id):
+                        a.status = "PENDING"
+                        a.daily_pnl = 0.0
+                        a.open_pnl = 0.0
+                        a.symbol = "--"
+                        a.position = "FLAT"
+                        a.trades_today = 0
+                    first = next((a for a in svc.get_accounts(group_id) if a.enabled), None)
+                    if first:
+                        first.status = "TRADING"
+                        state["active_account_id"] = first.id
+                        log.info(f"Group {group_id}: continuo -> {first.name}")
+                    db.commit()
+                # mode == "diario": no hacer nada, reset_daily() se encarga a las 00:00
 
     def _in_schedule(self, group: Group) -> bool:
         if not group.schedule_enabled:

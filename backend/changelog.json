@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.16",
+    "date": "2026-07-29",
+    "description": "reset_mode (manual/diario/continuo), multi-grupo en handlers, boton Install AddOn en Settings, updater+install .bat"
+  },
+  {
     "version": "v0.15",
     "date": "2026-07-29",
     "description": "Fix Apply to all (MXC), PDLL/PDPT close_all sin guard, signal archive antes de procesar"

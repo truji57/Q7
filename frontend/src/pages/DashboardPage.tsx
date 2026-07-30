@@ -121,13 +121,14 @@ export default function DashboardPage() {
             inSchedule = current >= start || current <= end;
           }
         }
-        const labelParts = [
-          group.active ? 'ACTIVO' : 'INACTIVO',
-          group.direction === 'BOTH' ? 'Ambas' : group.direction,
-          group.stop_on_reset ? 'Parar reinicio' : '',
-          group.mode === 'SEQUENTIAL' ? 'Secuencial' : 'Paralelo',
-          `${activeAccounts.length} ctas`,
-        ].filter(Boolean);
+          const resetLabel = group.reset_mode === 'manual' ? 'Reinicio manual' : group.reset_mode === 'continuo' ? 'Continuo' : 'Diario';
+          const labelParts = [
+            group.active ? 'ACTIVO' : 'INACTIVO',
+            group.direction === 'BOTH' ? 'Ambas' : group.direction,
+            resetLabel,
+            group.mode === 'SEQUENTIAL' ? 'Secuencial' : 'Paralelo',
+            `${activeAccounts.length} ctas`,
+          ].filter(Boolean);
 
         return (
           <div key={group.id} className={`bg-[#0e0e18] border rounded-lg mb-4 overflow-hidden ${group.active ? 'border-green-500/40' : 'border-[#1c1c2a]'}`}>

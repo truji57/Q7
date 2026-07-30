@@ -16,7 +16,8 @@ class Group(Base):
     active = Column(Boolean, default=False)
     direction = Column(String(10), default="BOTH")   # BOTH, LONG, SHORT
     mode = Column(String(20), default="SEQUENTIAL")  # SEQUENTIAL, PARALLEL
-    stop_on_reset = Column(Boolean, default=True)    # Parar hasta reinicio
+    stop_on_reset = Column(Boolean, default=True)    # DEPRECATED -> reset_mode
+    reset_mode = Column(String(20), default="diario")  # manual, diario, continuo
     include_in_fleet = Column(Boolean, default=False)
 
     schedule_enabled = Column(Boolean, default=False)

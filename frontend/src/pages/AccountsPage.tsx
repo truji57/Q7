@@ -17,7 +17,7 @@ export default function AccountsPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [showGroupForm, setShowGroupForm] = useState(false);
-  const [groupForm, setGroupForm] = useState({ name: '', direction: 'BOTH', mode: 'SEQUENTIAL', stop_on_reset: true });
+  const [groupForm, setGroupForm] = useState({     name: '', direction: 'BOTH', mode: 'SEQUENTIAL', stop_on_reset: true, reset_mode: 'diario' });
 
   const [showAccountForm, setShowAccountForm] = useState<number | null>(null);
   const [accountForm, setAccountForm] = useState({ name: '', nt8_account: '' });
@@ -40,14 +40,14 @@ export default function AccountsPage() {
         await api.createGroup(groupForm);
       }
       setShowGroupForm(false); setEditingGroup(null);
-      setGroupForm({ name: '', direction: 'BOTH', mode: 'SEQUENTIAL', stop_on_reset: true });
+      setGroupForm({     name: '', direction: 'BOTH', mode: 'SEQUENTIAL', stop_on_reset: true, reset_mode: 'diario' });
       load();
     } catch (e: any) { alert(e.message); }
   };
 
   const editGroup = (g: Group) => {
     setEditingGroup(g);
-    setGroupForm({ name: g.name, direction: g.direction, mode: g.mode, stop_on_reset: g.stop_on_reset });
+    setGroupForm({ name: g.name, direction: g.direction, mode: g.mode, stop_on_reset: g.stop_on_reset, reset_mode: g.reset_mode || 'diario' });
     setShowGroupForm(true);
   };
 
@@ -90,7 +90,7 @@ export default function AccountsPage() {
   return (
     <div className="max-w-4xl">
       <div className="flex items-center justify-between mb-6">
-        <button onClick={() => { setShowGroupForm(true); setEditingGroup(null); setGroupForm({ name: '', direction: 'BOTH', mode: 'SEQUENTIAL', stop_on_reset: true }); }}
+        <button onClick={() => { setShowGroupForm(true); setEditingGroup(null); setGroupForm({     name: '', direction: 'BOTH', mode: 'SEQUENTIAL', stop_on_reset: true, reset_mode: 'diario' }); }}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-[#4f8cff]/10 border border-[#4f8cff]/30 text-[#4f8cff] rounded-md text-xs font-semibold hover:bg-[#4f8cff]/20">
           <Plus size={13} /> New Group
         </button>
@@ -113,10 +113,15 @@ export default function AccountsPage() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-xs text-zinc-400">
-              <input type="checkbox" checked={groupForm.stop_on_reset} onChange={(e) => setGroupForm({ ...groupForm, stop_on_reset: e.target.checked })} />
-              Parar hasta reinicio
-            </label>
+            <div>
+              <label className="block text-[10px] text-zinc-500 mb-0.5">Reinicio</label>
+              <select className="w-full text-xs bg-[#1a1a26] border border-[#2a2a3a] rounded-md px-2 py-1.5 text-zinc-200"
+                value={groupForm.reset_mode} onChange={(e) => setGroupForm({ ...groupForm, reset_mode: e.target.value })}>
+                <option value="manual">Manual</option>
+                <option value="diario">Diario</option>
+                <option value="continuo">Continuo</option>
+              </select>
+            </div>
           </div>
           <div className="flex gap-2">
             <button onClick={saveGroup} className="px-4 py-1.5 bg-[#4f8cff] text-white rounded text-xs font-semibold">{editingGroup ? 'Update' : 'Create'}</button>
