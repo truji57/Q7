@@ -94,6 +94,9 @@ class AccountService:
             a.trades_today = 0
             a.symbol = "--"
             a.position = "FLAT"
+            a.daily_start_realized = a.last_realized  # Baseline diario
+            a.round_start_realized = 0.0  # Reset ronda
+            a.round_pnl = 0.0
             a.last_reset = today
         if accounts: self.db.commit()
 
@@ -142,6 +145,7 @@ class AccountService:
             "status": a.status,
             "balance": round(a.balance, 2) if a.balance else 0,
             "daily_pnl": round(a.daily_pnl, 2) if a.daily_pnl else 0,
+            "round_pnl": round(a.round_pnl, 2) if a.round_pnl else 0,
             "open_pnl": round(a.open_pnl, 2) if a.open_pnl else 0,
             "symbol": a.symbol or "--",
             "position": a.position or "FLAT",

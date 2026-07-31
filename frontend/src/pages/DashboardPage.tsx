@@ -226,16 +226,17 @@ export default function DashboardPage() {
                     <tr className="text-zinc-500 border-b border-[#1a1a2a]">
                       <th className="text-left py-2 px-3 font-medium">ESTADO</th>
                       <th className="text-left py-2 px-3 font-medium">CUENTA</th>
-                      <th className="text-left py-2 px-3 font-medium">POS</th>
-                      <th className="text-right py-2 px-3 font-medium">BALANCE</th>
-                      <th className="text-right py-2 px-3 font-medium">PNL DIA</th>
-                      <th className="text-right py-2 px-3 font-medium">OPEN</th>
-                      <th className="text-right py-2 px-3 font-medium min-w-[60px]">CT</th>
-                      <th className="text-right py-2 px-3 font-medium min-w-[60px]">MXC</th>
-                      <th className="text-right py-2 px-3 font-medium min-w-[60px]">PDLL</th>
-                      <th className="text-right py-2 px-3 font-medium min-w-[60px]">PDPT</th>
-                      <th className="text-right py-2 px-3 font-medium min-w-[60px]">TPC</th>
-                      <th className="text-right py-2 px-3 font-medium min-w-[60px]">SLC</th>
+                      <th className="text-center py-2 px-3 font-medium">POS</th>
+                      <th className="text-center py-2 px-3 font-medium">BALANCE</th>
+                      <th className="text-center py-2 px-3 font-medium">PNL DIA</th>
+                      <th className="text-center py-2 px-3 font-medium">PNL RONDA</th>
+                      <th className="text-center py-2 px-3 font-medium">OPEN</th>
+                      <th className="text-center py-2 px-3 font-medium min-w-[60px]">CT</th>
+                      <th className="text-center py-2 px-3 font-medium min-w-[60px]">MXC</th>
+                      <th className="text-center py-2 px-3 font-medium min-w-[60px]">PDLL</th>
+                      <th className="text-center py-2 px-3 font-medium min-w-[60px]">PDPT</th>
+                      <th className="text-center py-2 px-3 font-medium min-w-[60px]">TPC</th>
+                      <th className="text-center py-2 px-3 font-medium min-w-[60px]">SLC</th>
                       <th className="text-center py-2 px-3 font-medium">ON</th>
                     </tr>
                   </thead>
@@ -254,20 +255,23 @@ export default function DashboardPage() {
                           </div>
                           <div className="text-[10px] text-zinc-600">{acc.nt8_account}</div>
                         </td>
-                        <td className="py-2 px-3 text-zinc-400">{acc.position}</td>
-                        <td className="py-2 px-3 text-right text-zinc-300">${acc.balance.toFixed(0)}</td>
-                        <td className={`py-2 px-3 text-right ${acc.daily_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <td className={`py-2 px-3 text-center text-xs font-semibold ${acc.position === 'LONG' ? 'text-blue-400' : acc.position === 'SHORT' ? 'text-red-400' : 'text-zinc-400'}`}>{acc.position}</td>
+                        <td className="py-2 px-3 text-center text-zinc-300">${acc.balance.toFixed(0)}</td>
+                        <td className={`py-2 px-3 text-center ${acc.daily_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                           ${acc.daily_pnl.toFixed(0)}
                         </td>
-                        <td className={`py-2 px-3 text-right ${(acc.open_pnl || 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                        <td className={`py-2 px-3 text-center ${(acc.round_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          ${(acc.round_pnl || 0).toFixed(0)}
+                        </td>
+                        <td className={`py-2 px-3 text-center ${(acc.open_pnl || 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
                           ${(acc.open_pnl || 0).toFixed(0)}
                         </td>
-                        <td className="py-2 px-3 text-right"><EditCell value={acc.ct} onSave={(v) => updateAccountField(acc.id, 'ct', v)} /></td>
-                        <td className="py-2 px-3 text-right"><EditCell value={acc.max_positions || 6} onSave={(v) => updateAccountField(acc.id, 'max_positions', v)} /></td>
-                        <td className="py-2 px-3 text-right"><EditCell value={acc.pdll} onSave={(v) => updateAccountField(acc.id, 'pdll', v)} /></td>
-                        <td className="py-2 px-3 text-right"><EditCell value={acc.pdpt} onSave={(v) => updateAccountField(acc.id, 'pdpt', v)} /></td>
-                        <td className="py-2 px-3 text-right"><EditCell value={acc.tpc} onSave={(v) => updateAccountField(acc.id, 'tpc', v)} /></td>
-                        <td className="py-2 px-3 text-right"><EditCell value={acc.slc} onSave={(v) => updateAccountField(acc.id, 'slc', v)} /></td>
+                        <td className="py-2 px-3 text-center"><EditCell value={acc.ct} onSave={(v) => updateAccountField(acc.id, 'ct', v)} /></td>
+                        <td className="py-2 px-3 text-center"><EditCell value={acc.max_positions || 6} onSave={(v) => updateAccountField(acc.id, 'max_positions', v)} /></td>
+                        <td className="py-2 px-3 text-center"><EditCell value={acc.pdll} onSave={(v) => updateAccountField(acc.id, 'pdll', v)} /></td>
+                        <td className="py-2 px-3 text-center"><EditCell value={acc.pdpt} onSave={(v) => updateAccountField(acc.id, 'pdpt', v)} /></td>
+                        <td className="py-2 px-3 text-center"><EditCell value={acc.tpc} onSave={(v) => updateAccountField(acc.id, 'tpc', v)} /></td>
+                        <td className="py-2 px-3 text-center"><EditCell value={acc.slc} onSave={(v) => updateAccountField(acc.id, 'slc', v)} /></td>
                         <td className="py-2 px-3 text-center">
                           <button
                             onClick={() => toggleAccount(acc.id, acc.enabled)}

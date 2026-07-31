@@ -58,6 +58,11 @@ class Account(Base):
     tpc = Column(Float, default=1500.0)   # TP por ciclo
     slc = Column(Float, default=2000.0)   # SL por ciclo
 
+    round_start_realized = Column(Float, default=0.0)  # Baseline $ para PNL Ronda
+    daily_start_realized = Column(Float, default=0.0)  # Baseline $ para PNL Dia
+    last_realized = Column(Float, default=0.0)  # Ultimo realized de NT8
+    round_pnl = Column(Float, default=0.0)  # PNL Ronda calculado
+
     # Estado actual
     status = Column(String(20), default="PENDING")
     balance = Column(Float, default=0.0)

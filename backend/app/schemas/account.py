@@ -23,6 +23,7 @@ class AccountSchema(BaseModel):
     status: str
     balance: float
     daily_pnl: float
+    round_pnl: float = 0.0
     open_pnl: float
     symbol: str
     position: str

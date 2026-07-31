@@ -15,6 +15,7 @@ export interface Account {
   status: string;
   balance: number;
   daily_pnl: number;
+  round_pnl: number;
   open_pnl: number;
   symbol: string;
   position: string;

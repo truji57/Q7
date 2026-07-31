@@ -393,10 +393,13 @@ class OrchestratorEngine:
                         a.symbol = "--"
                         a.position = "FLAT"
                         a.trades_today = 0
+                        a.daily_start_realized = a.last_realized  # Baseline diario
+                        a.round_start_realized = a.last_realized  # Baseline para nueva ronda
                     first = next((a for a in svc.get_accounts(group_id) if a.enabled), None)
                     if first:
                         first.status = "TRADING"
                         state["active_account_id"] = first.id
+                        state["processed"] = []  # Limpiar para nueva ronda
                         log.info(f"Group {group_id}: continuo -> {first.name}")
                     db.commit()
                 # mode == "diario": no hacer nada, reset_daily() se encarga a las 00:00
@@ -631,7 +634,15 @@ class OrchestratorEngine:
             unrealized = nt8.get("unrealized_pnl", 0)
             realized = nt8.get("realized_pnl", 0)
             acc.open_pnl = unrealized
-            acc.daily_pnl = realized + unrealized  # Total diario (realizado + flotante)
+            acc.last_realized = realized  # Guardar para baseline de ronda
+
+            # Calcular PNL Dia (con baseline diario)
+            daily_baseline = acc.daily_start_realized or 0
+            acc.daily_pnl = round((realized - daily_baseline) + unrealized, 2)
+
+            # Calcular PNL Ronda
+            round_baseline = acc.round_start_realized or 0
+            acc.round_pnl = round((realized - round_baseline) + unrealized, 2)
 
             pos_list = nt8.get("positions", [])
             if pos_list:
@@ -642,30 +653,43 @@ class OrchestratorEngine:
                 acc.position = "FLAT"
                 acc.symbol = "--"
 
-            # Check TP/SL based on total (realized + unrealized) PnL
-            total_pnl = realized + unrealized
+            # Determinar que PNL usar para PDLL/PDPT segun modo del grupo
+            group = db.query(Group).filter(Group.id == acc.group_id).first()
+            mode = group.reset_mode if group else "diario"
+            check_pnl = acc.round_pnl if mode == "continuo" else acc.daily_pnl
 
             # Skip daily check if close was recently sent
             if datetime.now().timestamp() - self._last_close_time.get(name, 0) < 10:
                 continue
 
-            if total_pnl >= acc.pdpt and acc.status in ("PENDING", "TRADING"):
+            if check_pnl >= acc.pdpt and acc.status in ("PENDING", "TRADING"):
                 acc.status = "TP_TOUCHED"
                 self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                 self._last_close_time[name] = datetime.now().timestamp()
-                self._add_log(f"{name}: DAILY TP +${total_pnl:.0f} ≥ +${acc.pdpt:.0f} → rotating")
-                log.info(f"TP {name}: total={total_pnl:.0f} >= {acc.pdpt}")
+                tag = "ROUND" if mode == "continuo" else "DAILY"
+                self._add_log(f"{name}: {tag} TP +${check_pnl:.0f} ≥ +${acc.pdpt:.0f} → rotating")
+                log.info(f"TP {name}: {tag} pnl={check_pnl:.0f} >= {acc.pdpt}")
 
-            elif total_pnl <= -acc.pdll and acc.status in ("PENDING", "TRADING"):
+            elif check_pnl <= -acc.pdll and acc.status in ("PENDING", "TRADING"):
                 acc.status = "SL_TOUCHED"
                 self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                 self._last_close_time[name] = datetime.now().timestamp()
-                self._add_log(f"{name}: DAILY SL -${abs(total_pnl):.0f} ≥ -${acc.pdll:.0f} → rotating")
-                log.info(f"SL {name}: total={total_pnl:.0f} <= -{acc.pdll}")
+                tag = "ROUND" if mode == "continuo" else "DAILY"
+                self._add_log(f"{name}: {tag} SL -${abs(check_pnl):.0f} ≥ -${acc.pdll:.0f} → rotating")
+                log.info(f"SL {name}: {tag} pnl={check_pnl:.0f} <= -{acc.pdll}")
 
             # If account was TP/SL and position is now closed, rotate
             if not pos_list and acc.status in ("TP_TOUCHED", "SL_TOUCHED"):
                 state = self.group_state.get(acc.group_id)
+                if not state:
+                    # Reconstruir state tras reinicio del backend
+                    # Buscar TRADING o, si no hay, la ultima cuenta que acabo de tocar
+                    active = next((a for a in db.query(Account).filter(
+                        Account.group_id == acc.group_id, Account.status.in_(["TRADING", "TP_TOUCHED", "SL_TOUCHED"])
+                    ).order_by(Account.order_index).all()), None)
+                    if active:
+                        state = {"active_account_id": active.id, "processed": []}
+                        self.group_state[acc.group_id] = state
                 if state and state.get("active_account_id") == acc.id:
                     self._next_account(acc.group_id, state, db)
 

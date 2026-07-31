@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.23",
+    "date": "2026-07-29",
+    "description": "PNL Ronda + baseline diario BD, fixes continuo (state+processed), POS color LONG/SHORT, columnas centradas"
+  },
+  {
     "version": "v0.22",
     "date": "2026-07-29",
     "description": "Polling 200ms en orchestrator + AddOn para reducir latencia [Requiere recompilar el AddOn en NT8]"

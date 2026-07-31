@@ -53,6 +53,10 @@ def _run_migrations():
             "tpc": "ALTER TABLE accounts ADD COLUMN tpc FLOAT DEFAULT 1500.0",
             "slc": "ALTER TABLE accounts ADD COLUMN slc FLOAT DEFAULT 2000.0",
             "max_positions": "ALTER TABLE accounts ADD COLUMN max_positions INTEGER DEFAULT 6",
+            "round_start_realized": "ALTER TABLE accounts ADD COLUMN round_start_realized FLOAT DEFAULT 0.0",
+            "daily_start_realized": "ALTER TABLE accounts ADD COLUMN daily_start_realized FLOAT DEFAULT 0.0",
+            "last_realized": "ALTER TABLE accounts ADD COLUMN last_realized FLOAT DEFAULT 0.0",
+            "round_pnl": "ALTER TABLE accounts ADD COLUMN round_pnl FLOAT DEFAULT 0.0",
         }
 
         # Check if old columns exist (tp/sl) → rename them
