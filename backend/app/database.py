@@ -58,6 +58,11 @@ def _run_migrations():
             "daily_baseline_set": "ALTER TABLE accounts ADD COLUMN daily_baseline_set INTEGER DEFAULT 0",
             "last_realized": "ALTER TABLE accounts ADD COLUMN last_realized FLOAT DEFAULT 0.0",
             "round_pnl": "ALTER TABLE accounts ADD COLUMN round_pnl FLOAT DEFAULT 0.0",
+            "round_num": "ALTER TABLE accounts ADD COLUMN round_num INTEGER DEFAULT 0",
+            "tpg": "ALTER TABLE accounts ADD COLUMN tpg FLOAT DEFAULT 0.0",
+            "slg": "ALTER TABLE accounts ADD COLUMN slg FLOAT DEFAULT 0.0",
+            "total_pnl": "ALTER TABLE accounts ADD COLUMN total_pnl FLOAT DEFAULT 0.0",
+            "starting_balance": "ALTER TABLE accounts ADD COLUMN starting_balance FLOAT DEFAULT 0.0",
         }
 
         # Check if old columns exist (tp/sl) → rename them
@@ -89,6 +94,8 @@ def _run_migrations():
             "default_slc": "ALTER TABLE groups ADD COLUMN default_slc FLOAT DEFAULT 2000.0",
             "default_max_positions": "ALTER TABLE groups ADD COLUMN default_max_positions INTEGER DEFAULT 6",
             "reset_mode": "ALTER TABLE groups ADD COLUMN reset_mode TEXT DEFAULT 'diario'",
+            "default_tpg": "ALTER TABLE groups ADD COLUMN default_tpg FLOAT DEFAULT 0.0",
+            "default_slg": "ALTER TABLE groups ADD COLUMN default_slg FLOAT DEFAULT 0.0",
         }
 
         # Rename old columns

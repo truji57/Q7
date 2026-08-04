@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.25",
+    "date": "2026-07-29",
+    "description": "TPG/SLG globales, PNL Total dinamico, INI editable, tooltips columnas, RESET siempre visible, reorden + anchos fijos"
+  },
+  {
     "version": "v0.24",
     "date": "2026-07-29",
     "description": "Fix PNL Dia/Ronda tras medianoche: flag daily_baseline_set evita PDLL/PDPT falso al iniciar dia"

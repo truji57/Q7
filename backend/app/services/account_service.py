@@ -98,6 +98,8 @@ class AccountService:
             a.daily_baseline_set = False
             a.round_start_realized = 0.0  # Reset ronda
             a.round_pnl = 0.0
+            a.round_num = 0
+            a.round_pnl = 0.0
             a.last_reset = today
         if accounts: self.db.commit()
 
@@ -125,6 +127,8 @@ class AccountService:
             "default_slc": g.default_slc,
             "default_pdll": g.default_pdll,
             "default_pdpt": g.default_pdpt,
+            "default_tpg": g.default_tpg or 0,
+            "default_slg": g.default_slg or 0,
             "accounts": [self.to_account_dict(a) for a in g.accounts],
         }
 
@@ -141,12 +145,17 @@ class AccountService:
             "max_positions": a.max_positions,
             "pdll": a.pdll,
             "pdpt": a.pdpt,
+            "tpg": a.tpg or 0,
+            "slg": a.slg or 0,
             "tpc": a.tpc,
             "slc": a.slc,
             "status": a.status,
             "balance": round(a.balance, 2) if a.balance else 0,
+            "starting_balance": a.starting_balance or 0,
             "daily_pnl": round(a.daily_pnl, 2) if a.daily_pnl else 0,
+            "total_pnl": round(a.total_pnl, 2) if a.total_pnl else 0,
             "round_pnl": round(a.round_pnl, 2) if a.round_pnl else 0,
+            "round_num": a.round_num or 0,
             "open_pnl": round(a.open_pnl, 2) if a.open_pnl else 0,
             "symbol": a.symbol or "--",
             "position": a.position or "FLAT",

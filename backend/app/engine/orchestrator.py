@@ -195,6 +195,12 @@ class OrchestratorEngine:
                     account = next((a for a in accounts if a.enabled and a.status in ("PENDING", "TRADING")), None)
                     if not account:
                         continue
+
+                    # Safety: only ONE TRADING per group
+                    for a in accounts:
+                        if a.id != account.id and a.status == "TRADING":
+                            a.status = "PENDING"
+
                     self._start_cycle_on_account(account, signal)
                     return
 
@@ -386,6 +392,7 @@ class OrchestratorEngine:
                 elif mode == "continuo":
                     # Reiniciar todas las cuentas a PENDING y volver a la primera
                     svc = AccountService(db)
+                    new_round = max((a.round_num or 0) for a in svc.get_accounts(group_id)) + 1
                     for a in svc.get_accounts(group_id):
                         a.status = "PENDING"
                         a.daily_pnl = 0.0
@@ -395,6 +402,7 @@ class OrchestratorEngine:
                         a.trades_today = 0
                         a.daily_start_realized = a.last_realized  # Baseline diario
                         a.round_start_realized = a.last_realized  # Baseline para nueva ronda
+                        a.round_num = new_round
                     first = next((a for a in svc.get_accounts(group_id) if a.enabled), None)
                     if first:
                         first.status = "TRADING"
@@ -635,6 +643,7 @@ class OrchestratorEngine:
             realized = nt8.get("realized_pnl", 0)
             acc.open_pnl = unrealized
             acc.last_realized = realized  # Guardar para baseline de ronda
+            acc.total_pnl = round((acc.balance + unrealized) - (acc.starting_balance or 0), 2)
 
             # Calcular PNL Dia (con baseline diario)
             if not acc.daily_baseline_set:
@@ -664,6 +673,23 @@ class OrchestratorEngine:
             # Skip daily check if close was recently sent
             if datetime.now().timestamp() - self._last_close_time.get(name, 0) < 10:
                 continue
+
+            # TPG / SLG — Global (no se resetea, desactiva cuenta)
+            if acc.tpg and acc.tpg > 0 and acc.total_pnl >= acc.tpg and acc.status in ("PENDING", "TRADING"):
+                acc.status = "TP_TOUCHED"
+                acc.enabled = False
+                self._write_trade(name, "", "", 0, 0, 0, close_all=True)
+                self._last_close_time[name] = datetime.now().timestamp()
+                self._add_log(f"{name}: GLOBAL TP +${acc.total_pnl:.0f} ≥ +${acc.tpg:.0f} → disabled")
+                log.info(f"TPG {name}: total={acc.total_pnl:.0f} >= {acc.tpg}")
+
+            elif acc.slg and acc.slg > 0 and acc.total_pnl <= -acc.slg and acc.status in ("PENDING", "TRADING"):
+                acc.status = "SL_TOUCHED"
+                acc.enabled = False
+                self._write_trade(name, "", "", 0, 0, 0, close_all=True)
+                self._last_close_time[name] = datetime.now().timestamp()
+                self._add_log(f"{name}: GLOBAL SL -${abs(acc.total_pnl):.0f} ≥ -${acc.slg:.0f} → disabled")
+                log.info(f"SLG {name}: total={acc.total_pnl:.0f} <= -{acc.slg}")
 
             if check_pnl >= acc.pdpt and acc.status in ("PENDING", "TRADING"):
                 acc.status = "TP_TOUCHED"

@@ -12,14 +12,14 @@ const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'text-blue-400',
 };
 
-type EditCellProps = { value: number; onSave: (v: number) => void };
+type EditCellProps = { value: number; onSave: (v: number) => void; prefix?: string };
 
-function EditCell({ value, onSave }: EditCellProps) {
+function EditCell({ value, onSave, prefix }: EditCellProps) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(value);
 
   if (!editing) {
-    return <span className="cursor-pointer hover:text-[#4f8cff]" onClick={() => setEditing(true)}>{value}</span>;
+    return <span className="cursor-pointer hover:text-[#4f8cff]" onClick={() => setEditing(true)}>{prefix || ''}{value || 0}</span>;
   }
 
   return (
@@ -177,14 +177,15 @@ export default function DashboardPage() {
                     ACTIVAR
                   </button>
                 )}
-                {debugMode && (
-                  <>
                 <button
                   onClick={async () => {
+                    if (!confirm('Reset this group? All accounts will go back to PENDING.')) return;
                     try { await api.resetGroup(group.id); addLog('Group ' + group.id + ' reset'); } catch {}
                   }}
-                  className="px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-[10px] rounded font-semibold hover:bg-yellow-500/20"
+                  className="px-4 py-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs rounded font-semibold hover:bg-yellow-500/20"
                 >RESET</button>
+                {debugMode && (
+                  <>
                 <button
                   onClick={async () => {
                     try {
@@ -221,58 +222,70 @@ export default function DashboardPage() {
             {/* Accounts Table */}
             {isOpen && (
               <div className="overflow-x-auto border-t border-[#1a1a2a]">
-                <table className="w-full text-xs">
+                <table className="w-full text-xs table-fixed">
                   <thead>
                     <tr className="text-zinc-500 border-b border-[#1a1a2a]">
-                      <th className="text-left py-2 px-3 font-medium">ESTADO</th>
-                      <th className="text-left py-2 px-3 font-medium">CUENTA</th>
-                      <th className="text-center py-2 px-3 font-medium">POS</th>
-                      <th className="text-center py-2 px-3 font-medium">BALANCE</th>
-                      <th className="text-center py-2 px-3 font-medium">PNL DIA</th>
-                      <th className="text-center py-2 px-3 font-medium">PNL RONDA</th>
-                      <th className="text-center py-2 px-3 font-medium">OPEN</th>
-                      <th className="text-center py-2 px-3 font-medium min-w-[60px]">CT</th>
-                      <th className="text-center py-2 px-3 font-medium min-w-[60px]">MXC</th>
-                      <th className="text-center py-2 px-3 font-medium min-w-[60px]">PDLL</th>
-                      <th className="text-center py-2 px-3 font-medium min-w-[60px]">PDPT</th>
-                      <th className="text-center py-2 px-3 font-medium min-w-[60px]">TPC</th>
-                      <th className="text-center py-2 px-3 font-medium min-w-[60px]">SLC</th>
-                      <th className="text-center py-2 px-3 font-medium">ON</th>
+                      <th className="text-left py-2 px-2 font-medium w-[70px]" title="Estado de la cuenta">ESTADO</th>
+                      <th className="text-left py-2 px-2 font-medium w-[200px]" title="Nombre y cuenta NT8">CUENTA</th>
+                      <th className="text-center py-2 px-2 font-medium w-[55px]" title="Posicion actual (LONG/SHORT/FLAT)">POS</th>
+                      <th className="text-center py-2 px-2 font-medium w-[45px]" title="Numero de ronda actual">RND</th>
+                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Capital inicial de la cuenta">INI</th>
+                      <th className="text-center py-2 px-2 font-medium w-[90px]" title="Balance actual en NT8">BALANCE</th>
+                      <th className="text-center py-2 px-2 font-medium w-[90px]" title="PNL total acumulado (Balance - Inicial)">PNL TOTAL</th>
+                      <th className="text-center py-2 px-2 font-medium w-[90px]" title="PNL del dia actual">PNL DIA</th>
+                      <th className="text-center py-2 px-2 font-medium w-[90px]" title="PNL de la ronda actual">PNL RONDA</th>
+                      <th className="text-center py-2 px-2 font-medium w-[90px]" title="PNL flotante de posiciones abiertas">OPEN</th>
+                      <th className="text-center py-2 px-2 font-medium w-[70px] border-l-2 border-zinc-500/40" title="Contratos por operacion">CT</th>
+                      <th className="text-center py-2 px-2 font-medium w-[70px]" title="Maximo de posiciones por ciclo">MXP</th>
+                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Take Profit por ciclo">TPC</th>
+                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Stop Loss por ciclo">SLC</th>
+                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Take Profit por ronda">TPxR</th>
+                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Stop Loss por ronda">SLxR</th>
+                      <th className="text-center py-2 px-2 font-medium w-[65px]" title="Take Profit Global (desactiva cuenta)">TPG</th>
+                      <th className="text-center py-2 px-2 font-medium w-[65px]" title="Stop Loss Global (desactiva cuenta)">SLG</th>
+                      <th className="text-center py-2 px-2 font-medium" title="Cuenta habilitada">ON</th>
                     </tr>
                   </thead>
                   <tbody>
                     {group.accounts.map((acc) => (
                       <tr key={acc.id} className={`border-b border-[#111122] hover:bg-[#111122]/50 ${!acc.enabled ? 'opacity-40' : ''}`}>
-                        <td className="py-2 px-3">
+                        <td className="py-2 px-2">
                           <span className={`text-[10px] font-semibold ${STATUS_COLORS[acc.status] || 'text-zinc-500'}`}>
                             {acc.status === 'TP_TOUCHED' ? 'TP ✓' : acc.status === 'SL_TOUCHED' ? 'SL ✗' : acc.status === 'TRADING' ? 'ACTIVE' : acc.status}
                           </span>
                         </td>
-                        <td className="py-2 px-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: acc.color }} />
-                            <span className="text-zinc-300">{acc.name}</span>
+                        <td className="py-2 px-2">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: acc.color }} />
+                            <span className="text-zinc-300 truncate">{acc.name}</span>
                           </div>
-                          <div className="text-[10px] text-zinc-600">{acc.nt8_account}</div>
+                          <div className="text-[10px] text-zinc-600 truncate">{acc.nt8_account}</div>
                         </td>
-                        <td className={`py-2 px-3 text-center text-xs font-semibold ${acc.position === 'LONG' ? 'text-blue-400' : acc.position === 'SHORT' ? 'text-red-400' : 'text-zinc-400'}`}>{acc.position}</td>
-                        <td className="py-2 px-3 text-center text-zinc-300">${acc.balance.toFixed(0)}</td>
-                        <td className={`py-2 px-3 text-center ${acc.daily_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <td className={`py-2 px-2 text-center text-xs font-semibold ${acc.position === 'LONG' ? 'text-blue-400' : acc.position === 'SHORT' ? 'text-red-400' : 'text-zinc-400'}`}>{acc.position}</td>
+                        <td className="py-2 px-2 text-center text-zinc-500 text-xs">{acc.round_num || 0}</td>
+                        <td className="py-2 px-2 text-center"><EditCell value={acc.starting_balance || 0} onSave={(v) => updateAccountField(acc.id, 'starting_balance', v)} prefix="$" /></td>
+                        <td className="py-2 px-2 text-center text-zinc-300 truncate">${(acc.balance + (acc.open_pnl || 0)).toFixed(0)}</td>
+                        <td className={`py-2 px-2 text-center truncate font-semibold ${(acc.total_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          ${(acc.total_pnl || 0).toFixed(0)}
+                        </td>
+                        <td className={`py-2 px-2 text-center truncate ${acc.daily_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                           ${acc.daily_pnl.toFixed(0)}
                         </td>
-                        <td className={`py-2 px-3 text-center ${(acc.round_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <td className={`py-2 px-2 text-center truncate ${(acc.round_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                           ${(acc.round_pnl || 0).toFixed(0)}
                         </td>
-                        <td className={`py-2 px-3 text-center ${(acc.open_pnl || 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                        <td className={`py-2 px-2 text-center truncate ${(acc.open_pnl || 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
                           ${(acc.open_pnl || 0).toFixed(0)}
                         </td>
-                        <td className="py-2 px-3 text-center"><EditCell value={acc.ct} onSave={(v) => updateAccountField(acc.id, 'ct', v)} /></td>
-                        <td className="py-2 px-3 text-center"><EditCell value={acc.max_positions || 6} onSave={(v) => updateAccountField(acc.id, 'max_positions', v)} /></td>
-                        <td className="py-2 px-3 text-center"><EditCell value={acc.pdll} onSave={(v) => updateAccountField(acc.id, 'pdll', v)} /></td>
-                        <td className="py-2 px-3 text-center"><EditCell value={acc.pdpt} onSave={(v) => updateAccountField(acc.id, 'pdpt', v)} /></td>
-                        <td className="py-2 px-3 text-center"><EditCell value={acc.tpc} onSave={(v) => updateAccountField(acc.id, 'tpc', v)} /></td>
-                        <td className="py-2 px-3 text-center"><EditCell value={acc.slc} onSave={(v) => updateAccountField(acc.id, 'slc', v)} /></td>
-                        <td className="py-2 px-3 text-center">
+                        <td className="py-2 px-2 text-center border-l-2 border-zinc-500/20"><EditCell value={acc.ct} onSave={(v) => updateAccountField(acc.id, 'ct', v)} /></td>
+                        <td className="py-2 px-2 text-center"><EditCell value={acc.max_positions || 6} onSave={(v) => updateAccountField(acc.id, 'max_positions', v)} /></td>
+                        <td className="py-2 px-2 text-center"><EditCell value={acc.tpc} onSave={(v) => updateAccountField(acc.id, 'tpc', v)} /></td>
+                        <td className="py-2 px-2 text-center"><EditCell value={acc.slc} onSave={(v) => updateAccountField(acc.id, 'slc', v)} /></td>
+                        <td className="py-2 px-2 text-center"><EditCell value={acc.pdpt} onSave={(v) => updateAccountField(acc.id, 'pdpt', v)} /></td>
+                        <td className="py-2 px-2 text-center"><EditCell value={acc.pdll} onSave={(v) => updateAccountField(acc.id, 'pdll', v)} /></td>
+                        <td className="py-2 px-2 text-center"><EditCell value={acc.tpg || 0} onSave={(v) => updateAccountField(acc.id, 'tpg', v)} /></td>
+                        <td className="py-2 px-2 text-center"><EditCell value={acc.slg || 0} onSave={(v) => updateAccountField(acc.id, 'slg', v)} /></td>
+                        <td className="py-2 px-2 text-center">
                           <button
                             onClick={() => toggleAccount(acc.id, acc.enabled)}
                             className={`w-8 h-4 rounded-full transition-colors ${acc.enabled ? 'bg-green-500' : 'bg-zinc-700'}`}

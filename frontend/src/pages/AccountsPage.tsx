@@ -182,18 +182,21 @@ export default function AccountsPage() {
           <div className="px-4 py-2 border-b border-[#1c1c2a] flex gap-4 text-[10px] text-zinc-500 items-center">
             <span>Defaults:</span>
             <span>CT: <input type="number" className="w-16 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_ct} onChange={(e) => updateGroupField(g.id, 'default_ct', parseInt(e.target.value) || 1)} /></span>
-            <span>MXC: <input type="number" className="w-14 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_max_positions || 6} onChange={(e) => updateGroupField(g.id, 'default_max_positions', parseInt(e.target.value) || 6)} /></span>
+            <span>MXP: <input type="number" className="w-14 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_max_positions || 6} onChange={(e) => updateGroupField(g.id, 'default_max_positions', parseInt(e.target.value) || 6)} /></span>
             <span>TPC: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_tpc} onChange={(e) => updateGroupField(g.id, 'default_tpc', parseFloat(e.target.value) || 0)} /></span>
             <span>SLC: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_slc} onChange={(e) => updateGroupField(g.id, 'default_slc', parseFloat(e.target.value) || 0)} /></span>
-            <span>PDLL: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_pdll} onChange={(e) => updateGroupField(g.id, 'default_pdll', parseFloat(e.target.value) || 0)} /></span>
-            <span>PDPT: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_pdpt} onChange={(e) => updateGroupField(g.id, 'default_pdpt', parseFloat(e.target.value) || 0)} /></span>
+            <span>TPxR: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_pdpt} onChange={(e) => updateGroupField(g.id, 'default_pdpt', parseFloat(e.target.value) || 0)} /></span>
+            <span>TPG: <input type="number" className="w-20 text-center bg-transparent border border-[#4f8cff]/30 rounded px-1" value={g.default_tpg || 0} onChange={(e) => updateGroupField(g.id, 'default_tpg', parseFloat(e.target.value) || 0)} /></span>
+            <span>SLxR: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_pdll} onChange={(e) => updateGroupField(g.id, 'default_pdll', parseFloat(e.target.value) || 0)} /></span>
+            <span>SLG: <input type="number" className="w-20 text-center bg-transparent border border-[#4f8cff]/30 rounded px-1" value={g.default_slg || 0} onChange={(e) => updateGroupField(g.id, 'default_slg', parseFloat(e.target.value) || 0)} /></span>
             <button
               onClick={async () => {
                 if (!confirm('Apply defaults to ALL accounts in this group?')) return;
                 for (const a of g.accounts) {
                   await api.updateAccount(a.id, {
                     ct: g.default_ct, max_positions: g.default_max_positions, tpc: g.default_tpc, slc: g.default_slc,
-                    pdll: g.default_pdll, pdpt: g.default_pdpt
+                    pdll: g.default_pdll, pdpt: g.default_pdpt,
+                    tpg: g.default_tpg, slg: g.default_slg
                   });
                 }
                 load();

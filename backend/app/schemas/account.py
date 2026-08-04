@@ -18,12 +18,17 @@ class AccountSchema(BaseModel):
     max_positions: int = 6
     pdll: float
     pdpt: float
+    tpg: float = 0.0
+    slg: float = 0.0
     tpc: float
     slc: float
     status: str
     balance: float
+    starting_balance: float = 0.0
     daily_pnl: float
+    total_pnl: float = 0.0
     round_pnl: float = 0.0
+    round_num: int = 0
     open_pnl: float
     symbol: str
     position: str
@@ -40,6 +45,8 @@ class AccountCreate(BaseModel):
     max_positions: Optional[int] = None
     pdll: Optional[float] = None
     pdpt: Optional[float] = None
+    tpg: Optional[float] = None
+    slg: Optional[float] = None
     tpc: Optional[float] = None
     slc: Optional[float] = None
     enabled: bool = True
@@ -53,11 +60,14 @@ class AccountUpdate(BaseModel):
     max_positions: Optional[int] = None
     pdll: Optional[float] = None
     pdpt: Optional[float] = None
+    tpg: Optional[float] = None
+    slg: Optional[float] = None
     tpc: Optional[float] = None
     slc: Optional[float] = None
     enabled: Optional[bool] = None
     color: Optional[str] = None
     order_index: Optional[int] = None
+    starting_balance: Optional[float] = None
 
 
 class GroupSchema(BaseModel):
@@ -80,6 +90,8 @@ class GroupSchema(BaseModel):
     default_slc: float
     default_pdll: float
     default_pdpt: float
+    default_tpg: float = 0.0
+    default_slg: float = 0.0
     accounts: List[AccountSchema] = []
 
     class Config:
@@ -113,6 +125,8 @@ class GroupUpdate(BaseModel):
     default_slc: Optional[float] = None
     default_pdll: Optional[float] = None
     default_pdpt: Optional[float] = None
+    default_tpg: Optional[float] = None
+    default_slg: Optional[float] = None
 
 
 class DashboardState(BaseModel):

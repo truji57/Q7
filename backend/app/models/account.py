@@ -33,6 +33,8 @@ class Group(Base):
     default_slc = Column(Float, default=2000.0)
     default_pdll = Column(Float, default=2100.0)
     default_pdpt = Column(Float, default=1600.0)
+    default_tpg = Column(Float, default=0.0)
+    default_slg = Column(Float, default=0.0)
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -55,6 +57,8 @@ class Account(Base):
     max_positions = Column(Integer, default=6)  # Max posiciones por ciclo
     pdll = Column(Float, default=2100.0)  # Perdida Diaria Limite → rotar cuenta
     pdpt = Column(Float, default=1600.0)  # Profit Diario Target → rotar cuenta
+    tpg = Column(Float, default=0.0)  # TP Global (0=sin limite)
+    slg = Column(Float, default=0.0)  # SL Global (0=sin limite)
     tpc = Column(Float, default=1500.0)   # TP por ciclo
     slc = Column(Float, default=2000.0)   # SL por ciclo
 
@@ -63,11 +67,14 @@ class Account(Base):
     daily_baseline_set = Column(Boolean, default=False)  # Si ya se fijo baseline diario
     last_realized = Column(Float, default=0.0)  # Ultimo realized de NT8
     round_pnl = Column(Float, default=0.0)  # PNL Ronda calculado
+    round_num = Column(Integer, default=0)  # Numero de ronda actual
+    starting_balance = Column(Float, default=0.0)  # Balance inicial de la cuenta
 
     # Estado actual
     status = Column(String(20), default="PENDING")
     balance = Column(Float, default=0.0)
     daily_pnl = Column(Float, default=0.0)
+    total_pnl = Column(Float, default=0.0)  # PNL Total acumulado (no se resetea)
     open_pnl = Column(Float, default=0.0)
     symbol = Column(String(20), default="--")
     position = Column(String(20), default="FLAT")

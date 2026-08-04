@@ -10,12 +10,17 @@ export interface Account {
   max_positions: number;
   pdll: number;
   pdpt: number;
+  tpg: number;
+  slg: number;
   tpc: number;
   slc: number;
   status: string;
   balance: number;
+  starting_balance: number;
   daily_pnl: number;
+  total_pnl: number;
   round_pnl: number;
+  round_num: number;
   open_pnl: number;
   symbol: string;
   position: string;
@@ -42,6 +47,8 @@ export interface Group {
   default_slc: number;
   default_pdll: number;
   default_pdpt: number;
+  default_tpg: number;
+  default_slg: number;
   accounts: Account[];
 }
 
