@@ -55,6 +55,7 @@ def _run_migrations():
             "max_positions": "ALTER TABLE accounts ADD COLUMN max_positions INTEGER DEFAULT 6",
             "round_start_realized": "ALTER TABLE accounts ADD COLUMN round_start_realized FLOAT DEFAULT 0.0",
             "daily_start_realized": "ALTER TABLE accounts ADD COLUMN daily_start_realized FLOAT DEFAULT 0.0",
+            "daily_baseline_set": "ALTER TABLE accounts ADD COLUMN daily_baseline_set INTEGER DEFAULT 0",
             "last_realized": "ALTER TABLE accounts ADD COLUMN last_realized FLOAT DEFAULT 0.0",
             "round_pnl": "ALTER TABLE accounts ADD COLUMN round_pnl FLOAT DEFAULT 0.0",
         }

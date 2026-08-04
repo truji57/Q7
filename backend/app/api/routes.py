@@ -82,6 +82,7 @@ def reset_group(group_id: int, db: Session = Depends(get_db)):
         a.daily_pnl = 0.0
         a.open_pnl = 0.0
         a.daily_start_realized = 0.0
+        a.daily_baseline_set = False
         a.round_start_realized = 0.0
         a.round_pnl = 0.0
         a.symbol = "--"

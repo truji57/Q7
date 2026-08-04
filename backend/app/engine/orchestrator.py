@@ -637,6 +637,9 @@ class OrchestratorEngine:
             acc.last_realized = realized  # Guardar para baseline de ronda
 
             # Calcular PNL Dia (con baseline diario)
+            if not acc.daily_baseline_set:
+                acc.daily_start_realized = realized
+                acc.daily_baseline_set = True
             daily_baseline = acc.daily_start_realized or 0
             acc.daily_pnl = round((realized - daily_baseline) + unrealized, 2)
 

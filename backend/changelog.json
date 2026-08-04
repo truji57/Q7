@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.24",
+    "date": "2026-07-29",
+    "description": "Fix PNL Dia/Ronda tras medianoche: flag daily_baseline_set evita PDLL/PDPT falso al iniciar dia"
+  },
+  {
     "version": "v0.23",
     "date": "2026-07-29",
     "description": "PNL Ronda + baseline diario BD, fixes continuo (state+processed), POS color LONG/SHORT, columnas centradas"

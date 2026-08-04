@@ -94,7 +94,8 @@ class AccountService:
             a.trades_today = 0
             a.symbol = "--"
             a.position = "FLAT"
-            a.daily_start_realized = a.last_realized  # Baseline diario
+            a.daily_start_realized = 0.0  # Se fijara en el primer sync
+            a.daily_baseline_set = False
             a.round_start_realized = 0.0  # Reset ronda
             a.round_pnl = 0.0
             a.last_reset = today

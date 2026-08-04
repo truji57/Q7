@@ -60,6 +60,7 @@ class Account(Base):
 
     round_start_realized = Column(Float, default=0.0)  # Baseline $ para PNL Ronda
     daily_start_realized = Column(Float, default=0.0)  # Baseline $ para PNL Dia
+    daily_baseline_set = Column(Boolean, default=False)  # Si ya se fijo baseline diario
     last_realized = Column(Float, default=0.0)  # Ultimo realized de NT8
     round_pnl = Column(Float, default=0.0)  # PNL Ronda calculado
 
