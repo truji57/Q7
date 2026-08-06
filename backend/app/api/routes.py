@@ -78,20 +78,35 @@ def reset_group(group_id: int, db: Session = Depends(get_db)):
     svc.reset_daily()
     accounts = svc.get_accounts(group_id)
     for a in accounts:
+        # NO tocar: balance, starting_balance, total_pnl, daily_pnl, CT, MXP, TPC, SLC, TPxR, SLxR, TPG, SLG
+        
+        # Re-habilitar todas las cuentas primero
+        a.enabled = True
+
+        # Evaluar TPG/SLG y deshabilitar cuenta si corresponde
+        total = a.total_pnl or 0
+        if a.tpg and a.tpg > 0 and total >= a.tpg:
+            a.enabled = False
+        if a.slg and a.slg > 0 and total <= -a.slg:
+            a.enabled = False
+
+        # Resetear estado de ronda y trading
         a.status = "PENDING"
-        a.daily_pnl = 0.0
         a.open_pnl = 0.0
-        a.daily_start_realized = 0.0
-        a.daily_baseline_set = False
-        a.round_start_realized = 0.0
-        a.round_pnl = 0.0
-        a.round_num = 0
-        a.starting_balance = 0.0
-        a.round_pnl = 0.0
         a.symbol = "--"
         a.position = "FLAT"
         a.trades_today = 0
+        a.round_start_realized = a.last_realized  # Baseline de ronda desde PnL actual
+        a.round_pnl = 0.0
+        a.round_num = 0
     db.commit()
+
+    # Marcar primera cuenta habilitada como TRADING
+    enabled = [a for a in accounts if a.enabled]
+    if enabled:
+        enabled[0].status = "TRADING"
+    db.commit()
+
     orch = get_orch()
     if orch:
         orch.reset_group_state(group_id)

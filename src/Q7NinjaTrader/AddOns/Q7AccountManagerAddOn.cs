@@ -147,6 +147,7 @@ namespace NinjaTrader.NinjaScript.AddOns
                             ["name"] = a.Name,
                             ["balance"] = a.Get(AccountItem.CashValue, Currency.UsDollar),
                             ["realized_pnl"] = a.Get(AccountItem.RealizedProfitLoss, Currency.UsDollar),
+                            ["daily_realized"] = a.Get(AccountItem.GrossRealizedProfitLoss, Currency.UsDollar),
                             ["unrealized_pnl"] = a.Get(AccountItem.UnrealizedProfitLoss, Currency.UsDollar),
                             ["positions"] = posList
                         });

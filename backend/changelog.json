@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.26",
+    "date": "2026-08-06",
+    "description": "TPG/SLG prioridad, daily_realized desde NT8, RESET re-habilita cuentas, Modal confirmacion, Status especifico (TPxR/SLxR/TPG/SLG), Modo Manual usa PNL Ronda [Requiere recompilar el AddOn en NT8]"
+  },
+  {
     "version": "v0.25",
     "date": "2026-07-29",
     "description": "TPG/SLG globales, PNL Total dinamico, INI editable, tooltips columnas, RESET siempre visible, reorden + anchos fijos"

@@ -7,8 +7,12 @@ import { Pencil, Trash2, TestTube2, ChevronDown, ChevronRight } from 'lucide-rea
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'text-zinc-500',
   TRADING: 'text-blue-400',
+  TP_RONDA: 'text-green-400',
+  SL_RONDA: 'text-red-400',
   TP_TOUCHED: 'text-green-400',
   SL_TOUCHED: 'text-red-400',
+  TP_GLOBAL: 'text-emerald-300',
+  SL_GLOBAL: 'text-rose-400',
   ACTIVE: 'text-blue-400',
 };
 
@@ -60,6 +64,7 @@ export default function DashboardPage() {
   const signalLog = useStore((s) => s.state?.signal_log || []);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [log, setLog] = useState<string[]>([]);
+  const [confirmReset, setConfirmReset] = useState<number | null>(null);
 
   const addLog = (msg: string) => {
     setLog(prev => [new Date().toLocaleTimeString('es-ES') + ' ' + msg, ...prev].slice(0, 20));
@@ -178,10 +183,7 @@ export default function DashboardPage() {
                   </button>
                 )}
                 <button
-                  onClick={async () => {
-                    if (!confirm('Reset this group? All accounts will go back to PENDING.')) return;
-                    try { await api.resetGroup(group.id); addLog('Group ' + group.id + ' reset'); } catch {}
-                  }}
+                  onClick={() => setConfirmReset(group.id)}
                   className="px-4 py-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs rounded font-semibold hover:bg-yellow-500/20"
                 >RESET</button>
                 {debugMode && (
@@ -251,7 +253,7 @@ export default function DashboardPage() {
                       <tr key={acc.id} className={`border-b border-[#111122] hover:bg-[#111122]/50 ${!acc.enabled ? 'opacity-40' : ''}`}>
                         <td className="py-2 px-2">
                           <span className={`text-[10px] font-semibold ${STATUS_COLORS[acc.status] || 'text-zinc-500'}`}>
-                            {acc.status === 'TP_TOUCHED' ? 'TP ✓' : acc.status === 'SL_TOUCHED' ? 'SL ✗' : acc.status === 'TRADING' ? 'ACTIVE' : acc.status}
+                            {acc.status === 'TP_RONDA' ? 'TPxR ✓' : acc.status === 'SL_RONDA' ? 'SLxR ✗' : acc.status === 'TP_GLOBAL' ? 'TPG ✓' : acc.status === 'SL_GLOBAL' ? 'SLG ✗' : acc.status === 'TRADING' ? 'ACTIVE' : acc.status}
                           </span>
                         </td>
                         <td className="py-2 px-2">
@@ -316,6 +318,30 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Reset confirmation modal */}
+      {confirmReset !== null && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setConfirmReset(null)}>
+          <div className="bg-[#151520] border border-[#2a2a3a] rounded-lg p-6 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-zinc-200 mb-2">Resetear grupo</h3>
+            <p className="text-xs text-zinc-400 mb-4">El reset hace lo siguiente:</p>
+            <ul className="text-xs text-zinc-400 space-y-1 mb-4 list-disc list-inside">
+              <li>Evalua TPG/SLG y <span className="text-red-400">deshabilita</span> cuentas que los hayan alcanzado</li>
+              <li>Reinicia el orden de cuentas empezando por la primera</li>
+              <li><span className="text-amber-400">Resetea:</span> PNL RONDA, OPEN, ronda, posicion, trades</li>
+              <li><span className="text-green-400">No toca:</span> INI, BALANCE, PNL TOTAL, PNL DIA, CT, MXP, TPC, SLC, TPxR, SLxR, TPG, SLG</li>
+            </ul>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirmReset(null)} className="px-4 py-2 text-xs text-zinc-400 bg-zinc-700/20 border border-zinc-600/30 rounded hover:bg-zinc-700/40">Cancelar</button>
+              <button onClick={async () => {
+                const gid = confirmReset;
+                setConfirmReset(null);
+                try { await api.resetGroup(gid); addLog('Group ' + gid + ' reset'); } catch {}
+              }} className="px-4 py-2 text-xs text-white bg-yellow-500/20 border border-yellow-500/40 rounded font-semibold hover:bg-yellow-500/30">Resetear</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
