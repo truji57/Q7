@@ -44,14 +44,14 @@ export default function Layout({ children }: { children: ReactNode }) {
   const mt5Connected = state?.mt5_connected ?? false;
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-6 py-3 bg-[#0a0a12] border-b border-[#1c1c2a] shrink-0">
-          <h2 className="text-base font-semibold text-zinc-200">{title}</h2>
-          <div className="flex items-center gap-5">
-            <span className="text-xs text-zinc-500 font-mono">
+        <div className="flex items-center justify-between px-3 md:px-6 py-3 bg-[#0a0a12] border-b border-[#1c1c2a] shrink-0 flex-wrap gap-2">
+          <h2 className="text-sm md:text-base font-semibold text-zinc-200">{title}</h2>
+          <div className="flex items-center gap-3 md:gap-5 flex-wrap">
+            <span className="text-[10px] md:text-xs text-zinc-500 font-mono">
               {time.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
             <div className="flex items-center gap-1.5">
@@ -82,7 +82,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-3 md:p-6 pb-20 md:pb-6 min-w-0">
           {children}
         </main>
       </div>

@@ -138,7 +138,7 @@ export default function DashboardPage() {
         return (
           <div key={group.id} className={`bg-[#0e0e18] border rounded-lg mb-4 overflow-hidden ${group.active ? 'border-green-500/40' : 'border-[#1c1c2a]'}`}>
             {/* Group Header */}
-            <div className="p-4 flex items-center justify-between cursor-pointer" onClick={() => toggle(group.id)}>
+            <div className="p-4 flex items-center justify-between gap-2 cursor-pointer flex-wrap" onClick={() => toggle(group.id)}>
               <div className="flex items-center gap-3">
                 {isOpen ? <ChevronDown size={14} className="text-zinc-500" /> : <ChevronRight size={14} className="text-zinc-500" />}
                 <div>
@@ -157,7 +157,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
                 {group.schedule_enabled && (
                   <div className="flex items-center gap-1 text-[10px] text-zinc-400">
                     <BlurInput className="w-10 text-center bg-[#1a1a26] border border-[#2a2a3a] rounded px-1 text-xs" min={0} max={23}
@@ -224,7 +224,7 @@ export default function DashboardPage() {
             {/* Accounts Table */}
             {isOpen && (
               <div className="overflow-x-auto border-t border-[#1a1a2a]">
-                <table className="w-full text-xs table-fixed">
+                <table className="w-full text-xs table-fixed min-w-[1100px]">
                   <thead>
                     <tr className="text-zinc-500 border-b border-[#1a1a2a]">
                       <th className="text-left py-2 px-2 font-medium w-[70px]" title="Estado de la cuenta">ESTADO</th>

@@ -9,7 +9,7 @@ import threading
 from datetime import date, datetime, time
 
 from app.database import SessionLocal
-from app.models.account import Account, Group
+from app.models.account import Account, Group, Config
 from app.services.account_service import AccountService
 
 log = logging.getLogger("Q7Backend.Orchestrator")
@@ -22,10 +22,9 @@ class OrchestratorEngine:
         self.commands_path = os.path.join(docs, "commands")
         self.status_path = os.path.join(docs, "status")
 
-        # MT5 signals path (MQL5 sandbox)
-        mt5 = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "MetaQuotes",
-                           "Terminal", "D0E8209F77C8CF37AD8BF550E51FF075", "MQL5", "Files", "Q7", "signals")
-        self.mt5_signals_path = mt5
+        # MT5 signals path - configurable via Settings
+        self._mt5_terminal_id = self._get_config("mt5_terminal_id") or "D0E8209F77C8CF37AD8BF550E51FF075"
+        self._update_mt5_path()
 
         for p in [self.signals_path, self.commands_path, self.status_path, self.mt5_signals_path]:
             os.makedirs(p, exist_ok=True)
@@ -45,6 +44,28 @@ class OrchestratorEngine:
 
     def set_ws_broadcast(self, fn):
         self.ws_broadcast = fn
+
+    def _get_config(self, key: str) -> str | None:
+        db = SessionLocal()
+        try:
+            cfg = db.query(Config).filter(Config.key == key).first()
+            return cfg.value if cfg else None
+        finally:
+            db.close()
+
+    def _update_mt5_path(self):
+        mt5 = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "MetaQuotes",
+                           "Terminal", self._mt5_terminal_id, "MQL5", "Files", "Q7", "signals")
+        self.mt5_signals_path = mt5
+
+    def reload_mt5_config(self):
+        """Recarga la ruta de MT5 cuando el usuario cambia el terminal ID"""
+        new_id = self._get_config("mt5_terminal_id") or "D0E8209F77C8CF37AD8BF550E51FF075"
+        if new_id != self._mt5_terminal_id:
+            self._mt5_terminal_id = new_id
+            self._update_mt5_path()
+            os.makedirs(self.mt5_signals_path, exist_ok=True)
+            log.info(f"MT5 terminal changed to: {new_id}")
 
     def reset_group_state(self, group_id: int):
         with self._lock:

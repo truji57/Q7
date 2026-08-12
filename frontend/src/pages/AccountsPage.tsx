@@ -100,7 +100,7 @@ export default function AccountsPage() {
       {showGroupForm && (
         <div className="bg-[#0e0e18] border border-[#1c1c2a] rounded-lg p-5 mb-6 space-y-4">
           <h3 className="text-sm font-semibold text-zinc-300">{editingGroup ? 'Edit' : 'New'} Group</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <F label="Group Name" value={groupForm.name} onChange={(v: string) => setGroupForm({ ...groupForm, name: v })} />
             <div>
               <label className="block text-[10px] text-zinc-500 mb-0.5">Direction</label>
@@ -153,14 +153,14 @@ export default function AccountsPage() {
           </div>
 
           {/* Schedule settings */}
-          <div className="px-4 py-3 border-b border-[#1c1c2a] flex items-center gap-4 text-xs">
+          <div className="px-4 py-3 border-b border-[#1c1c2a] flex items-center gap-4 text-xs flex-wrap">
             <label className="flex items-center gap-2 text-zinc-400">
               <input type="checkbox" checked={g.schedule_enabled}
                 onChange={(e) => updateGroupField(g.id, 'schedule_enabled', e.target.checked)} />
               Horario
             </label>
             {g.schedule_enabled && (
-              <div className="flex items-center gap-2 text-zinc-400">
+              <div className="flex items-center gap-2 text-zinc-400 flex-wrap">
                 <span>INICIO</span>
                 <input type="number" className="w-16 text-center text-xs" min={0} max={23} value={g.schedule_start_h}
                   onChange={(e) => updateGroupField(g.id, 'schedule_start_h', parseInt(e.target.value) || 0)} />
@@ -179,7 +179,7 @@ export default function AccountsPage() {
           </div>
 
           {/* Defaults */}
-          <div className="px-4 py-2 border-b border-[#1c1c2a] flex gap-4 text-[10px] text-zinc-500 items-center">
+          <div className="px-4 py-2 border-b border-[#1c1c2a] flex gap-4 text-[10px] text-zinc-500 items-center flex-wrap">
             <span>Defaults:</span>
             <span>CT: <input type="number" className="w-16 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_ct} onChange={(e) => updateGroupField(g.id, 'default_ct', parseInt(e.target.value) || 1)} /></span>
             <span>MXP: <input type="number" className="w-14 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_max_positions || 6} onChange={(e) => updateGroupField(g.id, 'default_max_positions', parseInt(e.target.value) || 6)} /></span>

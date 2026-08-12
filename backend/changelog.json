@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.27",
+    "date": "2026-08-06",
+    "description": "Optimizacion movil completa, MT5 Terminal ID configurable en Settings, RESET re-habilita y re-evalua TPG/SLG, status labels (TPxR/SLxR/TPG/SLG), PNL Ronda/Total/Diario corregidos, daily_realized desde NT8, modal confirmacion RESET, flex-wrap responsive"
+  },
+  {
     "version": "v0.26",
     "date": "2026-08-06",
     "description": "TPG/SLG prioridad, daily_realized desde NT8, RESET re-habilita cuentas, Modal confirmacion, Status especifico (TPxR/SLxR/TPG/SLG), Modo Manual usa PNL Ronda [Requiere recompilar el AddOn en NT8]"

@@ -212,6 +212,7 @@ def get_config(db: Session = Depends(get_db)):
     return {
         "bridge_port": svc.get_config("bridge_port") or "5556",
         "debug_mode": svc.get_config("debug_mode") or "false",
+        "mt5_terminal_id": svc.get_config("mt5_terminal_id") or "D0E8209F77C8CF37AD8BF550E51FF075",
     }
 
 
@@ -220,6 +221,11 @@ def update_config(data: dict, db: Session = Depends(get_db)):
     svc = AccountService(db)
     for k, v in data.items():
         svc.set_config(k, str(v))
+    # Reload MT5 terminal ID if changed
+    if "mt5_terminal_id" in data:
+        orch = get_orch()
+        if orch:
+            orch.reload_mt5_config()
     return {"ok": True}
 
 

@@ -10,8 +10,8 @@ echo [1/2] Starting Backend (FastAPI on :8005)...
 start "Q7-Backend" cmd /c "cd /d %ROOT%backend && python -m uvicorn app.main:app --host 127.0.0.1 --port 8005"
 echo.
 
-echo [2/2] Starting Frontend (Vite on :5173)...
-start "Q7-Frontend" cmd /c "cd /d %ROOT%frontend && npx vite --host 127.0.0.1 --port 5174"
+echo [2/2] Starting Frontend (Vite on :5174)...
+start "Q7-Frontend" cmd /c "cd /d %ROOT%frontend && npx vite --host 0.0.0.0 --port 5174"
 echo.
 
 timeout /t 3 >nul

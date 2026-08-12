@@ -6,6 +6,7 @@ import { useStore } from '../store';
 export default function ConfigPage() {
   const [bridgeHost, setBridgeHost] = useState('127.0.0.1');
   const [bridgePort, setBridgePort] = useState('5556');
+  const [mt5TerminalId, setMt5TerminalId] = useState('');
   const [debugMode, setDebugMode] = useState(false);
   const [saved, setSaved] = useState(false);
   const [installed, setInstalled] = useState(false);
@@ -17,6 +18,7 @@ export default function ConfigPage() {
     api.getConfig().then((c) => {
       setBridgeHost(c.bridge_host || '127.0.0.1');
       setBridgePort(c.bridge_port || '5556');
+      setMt5TerminalId(c.mt5_terminal_id || 'D0E8209F77C8CF37AD8BF550E51FF075');
       setDebugMode(c.debug_mode === 'true');
     }).catch(() => {});
     api.getChangelog().then((data) => {
@@ -35,6 +37,7 @@ export default function ConfigPage() {
       await api.updateConfig({
         bridge_host: bridgeHost,
         bridge_port: bridgePort,
+        mt5_terminal_id: mt5TerminalId,
         debug_mode: debugMode ? 'true' : 'false'
       });
       setDebug(debugMode);
@@ -65,7 +68,7 @@ export default function ConfigPage() {
       <div className="bg-[#0e0e18] border border-[#1c1c2a] rounded-lg p-6 space-y-5">
         <div>
           <h3 className="text-sm font-semibold text-zinc-300 mb-4">Conexion NT8 Bridge</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] text-zinc-500 mb-1">Host</label>
               <input
@@ -85,6 +88,21 @@ export default function ConfigPage() {
               />
             </div>
           </div>
+
+          <div className="mt-4">
+            <label className="block text-[11px] text-zinc-500 mb-1">MT5 Terminal ID</label>
+            <input
+              type="text"
+              value={mt5TerminalId}
+              onChange={(e) => setMt5TerminalId(e.target.value)}
+              className="w-full text-xs"
+              placeholder="D0E8209F77C8CF37AD8BF550E51FF075"
+            />
+            <p className="text-[10px] text-zinc-600 mt-1">
+              Carpeta de datos de MT5. Ubicacion: <code className="text-zinc-500">AppData\Roaming\MetaQuotes\Terminal\{mt5TerminalId || '...'}</code>
+            </p>
+          </div>
+
           <button
             onClick={handleInstallAddon}
             className="mt-3 flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 text-green-400 rounded-md text-xs font-semibold hover:bg-green-500/20 transition-colors"
