@@ -6,6 +6,7 @@ dist/
 .venv/
 venv/
 # DB (sensitive data)
+q7.db
 backend/q7.db
 *.db-shm
 *.db-wal

@@ -138,3 +138,17 @@ class DashboardState(BaseModel):
     last_signal_time: str = ""
     signal_log: List[str] = []
     nt8_accounts: List[dict] = []
+
+
+class SymbolMapSchema(BaseModel):
+    id: int
+    mt5_symbol: str
+    nt8_instrument: str
+
+    class Config:
+        from_attributes = True
+
+
+class SymbolMapUpdate(BaseModel):
+    symbols: List[dict] = []
+    default_instrument: Optional[str] = None

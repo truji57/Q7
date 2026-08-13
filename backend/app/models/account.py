@@ -63,6 +63,7 @@ class Account(Base):
     slc = Column(Float, default=2000.0)   # SL por ciclo
 
     round_start_realized = Column(Float, default=0.0)  # Baseline $ para PNL Ronda
+    round_baseline_set = Column(Boolean, default=False)  # Si ya se fijo baseline de ronda
     daily_start_realized = Column(Float, default=0.0)  # Baseline $ para PNL Dia
     daily_baseline_set = Column(Boolean, default=False)  # Si ya se fijo baseline diario
     last_realized = Column(Float, default=0.0)  # Ultimo realized de NT8
@@ -110,3 +111,23 @@ class Config(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     key = Column(String(100), unique=True, nullable=False)
     value = Column(String(500), nullable=False)
+
+
+class SymbolMap(Base):
+    __tablename__ = "symbol_maps"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    mt5_symbol = Column(String(50), unique=True, nullable=False)      # Simbolo que envia el EA (USTEC, NAS100, ...)
+    nt8_instrument = Column(String(100), nullable=False)             # Futuro en NT8 (MNQ 09-26, MES 09-26, ...)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ActivityLog(Base):
+    __tablename__ = "activity_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    category = Column(String(20))    # SIGNAL, TRADE, ROTATION, RESET, GLOBAL, CYCLE
+    message = Column(String(500))
+    account = Column(String(100), nullable=True)
+    group_id = Column(Integer, nullable=True)

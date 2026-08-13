@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Download, AlertCircle } from 'lucide-react';
+import { Save, Download, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useStore } from '../store';
 
@@ -12,6 +12,9 @@ export default function ConfigPage() {
   const [installed, setInstalled] = useState(false);
   const [changelog, setChangelog] = useState<{version: string; date: string; description: string}[]>([]);
   const [updateAvailable, setUpdateAvailable] = useState<string | null>(null);
+  const [symbols, setSymbols] = useState<{mt5_symbol: string; nt8_instrument: string}[]>([]);
+  const [defaultInstrument, setDefaultInstrument] = useState('MNQ 09-26');
+  const [symbolsSaved, setSymbolsSaved] = useState(false);
   const setDebug = useStore((s) => s.setDebugMode);
 
   useEffect(() => {
@@ -30,7 +33,24 @@ export default function ConfigPage() {
     api.checkUpdate().then((u) => {
       if (u.has_update) setUpdateAvailable(u.remote);
     }).catch(() => {});
+    api.getSymbols().then((s) => {
+      setSymbols(s.symbols || []);
+      setDefaultInstrument(s.default_instrument || 'MNQ 09-26');
+    }).catch(() => {});
   }, []);
+
+  const handleSaveSymbols = async () => {
+    try {
+      await api.saveSymbols({
+        symbols: symbols.filter((s) => s.mt5_symbol.trim() && s.nt8_instrument.trim()),
+        default_instrument: defaultInstrument,
+      });
+      setSymbolsSaved(true);
+      setTimeout(() => setSymbolsSaved(false), 2000);
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -126,6 +146,77 @@ export default function ConfigPage() {
           <p className="text-[10px] text-zinc-600 mt-2">
             El archivo <code className="text-zinc-400">Q7_SignalCatcher.mq5</code> esta en la carpeta <code className="text-zinc-400">mt5/</code> del proyecto. Copialo a <code className="text-zinc-400">MQL5\Experts\</code> de MT5 y compila con <kbd className="text-zinc-400">F7</kbd>.
           </p>
+        </div>
+
+        <div className="border-t border-[#1a1a2a] pt-5">
+          <h3 className="text-sm font-semibold text-zinc-300 mb-1">Symbols Map</h3>
+          <p className="text-[10px] text-zinc-600 mb-3 leading-relaxed">
+            Traduce el simbolo que envia el EA de MT5 (USTEC, NAS100, ...) al futuro que se opera en NT8 (MNQ 09-26, MES 09-26, ...).
+          </p>
+
+          <div className="space-y-2">
+            {symbols.map((s, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={s.mt5_symbol}
+                  onChange={(e) => {
+                    const copy = [...symbols];
+                    copy[i] = { ...copy[i], mt5_symbol: e.target.value.toUpperCase() };
+                    setSymbols(copy);
+                  }}
+                  placeholder="USTEC"
+                  className="w-1/2 text-xs"
+                />
+                <span className="text-zinc-600 text-xs">→</span>
+                <input
+                  type="text"
+                  value={s.nt8_instrument}
+                  onChange={(e) => {
+                    const copy = [...symbols];
+                    copy[i] = { ...copy[i], nt8_instrument: e.target.value };
+                    setSymbols(copy);
+                  }}
+                  placeholder="MNQ 09-26"
+                  className="w-1/2 text-xs"
+                />
+                <button
+                  onClick={() => setSymbols(symbols.filter((_, j) => j !== i))}
+                  className="text-zinc-600 hover:text-red-400 transition-colors"
+                  title="Borrar fila"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setSymbols([...symbols, { mt5_symbol: '', nt8_instrument: '' }])}
+            className="mt-2 flex items-center gap-1.5 px-3 py-1.5 bg-[#1c1c2a] border border-[#2a2a3a] text-zinc-400 rounded-md text-xs hover:bg-[#242433] transition-colors"
+          >
+            <Plus size={12} />
+            Añadir simbolo
+          </button>
+
+          <div className="mt-4">
+            <label className="block text-[11px] text-zinc-500 mb-1">Instrumento por defecto (simbolo sin mapear)</label>
+            <input
+              type="text"
+              value={defaultInstrument}
+              onChange={(e) => setDefaultInstrument(e.target.value)}
+              className="w-full text-xs"
+              placeholder="MNQ 09-26"
+            />
+          </div>
+
+          <button
+            onClick={handleSaveSymbols}
+            className="mt-3 flex items-center gap-2 px-4 py-2 bg-[#4f8cff] text-white rounded-md text-xs font-semibold hover:bg-[#3b6fd4] transition-colors"
+          >
+            <Save size={14} />
+            {symbolsSaved ? 'Guardado!' : 'Guardar Symbols Map'}
+          </button>
         </div>
 
         <div className="border-t border-[#1a1a2a] pt-5">

@@ -9,7 +9,7 @@ import threading
 from datetime import date, datetime, time
 
 from app.database import SessionLocal
-from app.models.account import Account, Group, Config
+from app.models.account import Account, Group, Config, ActivityLog, SymbolMap
 from app.services.account_service import AccountService
 
 log = logging.getLogger("Q7Backend.Orchestrator")
@@ -32,13 +32,11 @@ class OrchestratorEngine:
 
         self.group_state: dict[int, dict] = {}
         self.last_signal_time: str = ""
-        self.current_trend: int = 0
         self.signal_log: list[str] = []
         self.mt5_connected: bool = False
         self.last_mt5_hb: float = 0
         self._last_close_time: dict[str, float] = {}
         self._cycle_start_realized: dict[str, float] = {}
-        self._cycle_start_time: dict[str, float] = {}
         self._lock = threading.Lock()
         self.ws_broadcast = None
 
@@ -171,30 +169,66 @@ class OrchestratorEngine:
 
                 sig_type = signal.get("type", "").upper()
 
-                if sig_type == "CYCLE_START":
-                    self._handle_cycle_start(signal)
-                    self._add_log(f"CYCLE_START {'LONG' if signal.get('direction',1)>0 else 'SHORT'} | {signal.get('instrument','?')}")
+                if sig_type in ("OPEN_LONG", "OPEN_SHORT"):
+                    signal["direction"] = 1 if sig_type == "OPEN_LONG" else -1
+                    instrument = signal.get("instrument", "?")
+                    self._handle_entry(signal)
+                    self._add_log(f"{sig_type} | {instrument} | vol={signal.get('volume', '?')}",
+                                  category="SIGNAL")
+                elif sig_type in ("CYCLE_START", "ADD_POSITION"):
+                    # Back-compat: la direccion sale SIEMPRE de la senal
+                    direction_val = signal.get("direction", 1)
+                    direction_str = "LONG" if (direction_val or 1) > 0 else "SHORT"
+                    instrument = signal.get("instrument", "?")
+                    self._handle_entry(signal)
+                    self._add_log(f"{sig_type} {direction_str} | {instrument} | vol={signal.get('volume', '?')}",
+                                  category="SIGNAL")
                 elif sig_type == "CYCLE_END":
-                    self._handle_cycle_end(signal)
-                    self._add_log(f"CYCLE_END | {signal.get('instrument','?')}")
-                elif sig_type == "ADD_POSITION":
-                    self._handle_add_position(signal)
-                    self._add_log(f"ADD_POSITION {signal.get('instrument','?')}")
+                    # Obsoleto: el cierre lo gestionan SOLO los limites de riesgo (TPC/SLC/PDLL/PDPT/TPG/SLG)
+                    self._add_log(f"CYCLE_END ignorado (cierre por limites) | {signal.get('instrument','?')}",
+                                  category="SIGNAL")
                 elif sig_type == "HEARTBEAT":
                     self.mt5_connected = True
                     self.last_mt5_hb = datetime.now().timestamp()
                 else:
                     self.on_signal(signal)
-                    self._add_log(f"SIGNAL {signal.get('action','?')}")
+                    self._add_log(f"SIGNAL {signal.get('action','?')}", category="SIGNAL")
 
                 self.last_signal_time = datetime.utcnow().isoformat()
             except Exception as e:
                 log.error(f"Signal error: {e}")
 
-    def _handle_cycle_start(self, signal: dict):
-        """Maneja una senal CYCLE_START: envia START_CYCLE a la cuenta activa"""
-        direction = signal.get("direction", 1)
-        self.current_trend = direction
+    def _group_has_open_positions(self, db, group_id: int) -> bool:
+        """True si alguna cuenta del grupo tiene posicion abierta segun el status LIVE del AddOn"""
+        try:
+            files = sorted(glob.glob(os.path.join(self.status_path, "status_*.json")), reverse=True)
+            if not files:
+                return False
+            with open(files[0], "r", encoding="utf-8") as f:
+                status = json.load(f)
+            names = {nt8 for (nt8,) in db.query(Account.nt8_account).filter(Account.group_id == group_id).all()}
+            for nt8 in status.get("accounts", []):
+                if nt8.get("name", "") in names and nt8.get("positions"):
+                    return True
+            return False
+        except:
+            return False
+
+    def _handle_entry(self, signal: dict):
+        """OPEN_LONG / OPEN_SHORT (back-compat: CYCLE_START / ADD_POSITION).
+
+        Abre o SUMA posicion en la cuenta activa del grupo. La direccion sale
+        SIEMPRE de la senal (nunca de estado interno). Repetir la misma
+        direccion con posicion abierta = anadir contratos en esa misma cuenta.
+        """
+        sig_type = (signal.get("type") or "").upper()
+        direction = 1 if (signal.get("direction", 1) or 1) > 0 else -1
+        if sig_type == "OPEN_SHORT":
+            direction = -1
+        elif sig_type == "OPEN_LONG":
+            direction = 1
+        direction_str = "LONG" if direction > 0 else "SHORT"
+        signal_instrument = signal.get("instrument") or "?"
 
         with self._lock:
             db = SessionLocal()
@@ -205,101 +239,142 @@ class OrchestratorEngine:
                 groups = svc.get_all_groups()
                 active_groups = [g for g in groups if g.active]
                 if not active_groups:
-                    log.warning("CYCLE_START: no active group")
+                    log.warning(f"{direction_str}: no active group")
                     return
 
-                # Find first active group that is in schedule and has available accounts
                 for active_group in active_groups:
                     if not self._in_schedule(active_group):
                         continue
-                    accounts = svc.get_accounts(active_group.id)
-                    account = next((a for a in accounts if a.enabled and a.status in ("PENDING", "TRADING")), None)
-                    if not account:
+
+                    enabled = [a for a in svc.get_accounts(active_group.id) if a.enabled]
+                    if not enabled:
                         continue
 
-                    # Safety: only ONE TRADING per group
-                    for a in accounts:
-                        if a.id != account.id and a.status == "TRADING":
-                            a.status = "PENDING"
+                    state = self.group_state.get(active_group.id, {"processed": []})
+                    active_id = state.get("active_account_id")
 
-                    self._start_cycle_on_account(account, signal)
+                    # 1) Cuenta activa (por estado, o la unica TRADING de facto tras reinicio)
+                    target = next((a for a in enabled if a.id == active_id and a.status == "TRADING"), None)
+                    if target is None:
+                        target = next((a for a in enabled if a.status == "TRADING"), None)
+
+                    if target:
+                        # MISMA cuenta activa: permitido SUMA aunque tenga posicion abierta
+                        if state.get("active_account_id") != target.id:
+                            state["active_account_id"] = target.id
+                        self.group_state[active_group.id] = state
+                        self._send_entry(target, signal)
+                        return
+
+                    # 2) Sin cuenta activa -> NUNCA activar otra mientras haya posiciones abiertas
+                    if self._group_has_open_positions(db, active_group.id):
+                        log.info(f"Group {active_group.id}: {direction_str} ignorado, posiciones aun abiertas")
+                        continue
+
+                    # 3) Reset continuo: todas en TP/SL y sin posiciones -> nueva ronda + abrir trade
+                    if active_group.reset_mode == "continuo":
+                        target = self._reset_continuo(db, active_group, enabled, state)
+                        if target:
+                            self._send_entry(target, signal)
+                            return
+
+                    # 4) Rotacion: siguiente PENDING no procesado
+                    processed = state.get("processed", [])
+                    target = next((a for a in enabled if a.id not in processed and a.status == "PENDING"), None)
+                    if not target:
+                        continue
+
+                    # Safety: solo UN TRADING por grupo
+                    for a in enabled:
+                        if a.status == "TRADING" and a.id != target.id:
+                            a.status = "PENDING"
+                    if active_id and active_id not in processed:
+                        processed.append(active_id)
+                    target.status = "TRADING"
+                    state["active_account_id"] = target.id
+                    state["processed"] = processed
+                    self.group_state[active_group.id] = state
+                    db.commit()
+                    log.info(f"Group {active_group.id}: -> {target.name}")
+                    self._send_entry(target, signal)
                     return
 
-                log.warning(f"CYCLE_START: no group in schedule with available accounts ({len(active_groups)} active)")
+                log.warning(f"{direction_str}: no group in schedule with available accounts")
             finally:
                 db.close()
 
-    def _start_cycle_on_account(self, account, signal: dict):
-        direction = signal.get("direction", 1)
-        direction_str = "LONG" if direction > 0 else "SHORT"
+    def _reset_continuo(self, db, group, enabled, state) -> Account | None:
+        """Reinicia todas las cuentas del grupo a PENDING (nueva ronda) y devuelve la primera como TRADING.
+        Solo cuando todas estan en TP/SL y el llamador ya verifico que no hay posiciones abiertas."""
+        tp_statuses = ("TP_RONDA", "SL_RONDA", "TP_GLOBAL", "SL_GLOBAL")
+        all_done = all(a.status in tp_statuses for a in enabled)
+        if not all_done:
+            return None
+        new_round = max((a.round_num or 0) for a in enabled) + 1
+        for a in enabled:
+            a.status = "PENDING"
+            a.open_pnl = 0.0
+            a.symbol = "--"
+            a.position = "FLAT"
+            a.trades_today = 0
+            a.daily_start_realized = a.last_realized
+            a.round_baseline_set = False
+            a.round_pnl = 0.0
+            a.round_num = new_round
+        first = enabled[0]
+        first.status = "TRADING"
+        state["processed"] = []
+        db.commit()
+        log.info(f"Group {group.id}: continuo reset ronda {new_round}")
+        self._add_log(f"Group {group.id}: nueva ronda {new_round}", category="RESET")
+        return first
 
-        # Mark as TRADING (active account)
+    def _send_entry(self, account, signal: dict):
+        """Envia ENTER_LONG/ENTER_SHORT a la cuenta. Contratos = CT de la cuenta;
+        instrumento = symbols map. NO resetea el baseline de ciclo (los adds no lo rompen)."""
+        sig_type = (signal.get("type") or "").upper()
+        direction = 1 if (signal.get("direction", 1) or 1) > 0 else -1
+        if sig_type == "OPEN_SHORT":
+            direction = -1
+        elif sig_type == "OPEN_LONG":
+            direction = 1
+        direction_str = "LONG" if direction > 0 else "SHORT"
+        signal_instrument = signal.get("instrument") or "?"
+
         db2 = SessionLocal()
         try:
             acc = db2.query(Account).filter(Account.id == account.id).first()
-            if acc and acc.status == "PENDING":
+            if acc and acc.status != "TRADING":
                 acc.status = "TRADING"
                 db2.commit()
         finally:
             db2.close()
 
-        # Track cycle PnL baseline
-        self._cycle_start_realized[account.nt8_account] = None
-        self._cycle_start_time[account.nt8_account] = datetime.now().timestamp()
-
-        # Send TRADE command (simple order, AddOn just executes it)
+        instrument = self._resolve_instrument(signal_instrument)
         ct = max(1, account.ct)
-        self._write_trade(account.nt8_account, "ENTER_" + direction_str, "MNQ 09-26", ct, 0, 0)
+        self._write_trade(account.nt8_account, "ENTER_" + direction_str, instrument, ct, 0, 0)
 
-        log.info(f"CYCLE_START: {direction_str} on [{account.nt8_account}] CT={ct}")
+        log.info(f"{direction_str}: {ct}x {instrument} -> [{account.nt8_account}]")
+        self._add_log(f"TRADE {direction_str} {ct}x {instrument} -> {account.nt8_account}",
+                      category="TRADE", account=account.nt8_account)
 
-    def _handle_cycle_end(self, signal: dict):
-        """CYCLE_END del MT5 → cierra posiciones en cuenta activa"""
-        with self._lock:
-            db = SessionLocal()
-            try:
-                svc = AccountService(db)
-                groups = svc.get_all_groups()
-                active_groups = [g for g in groups if g.active]
-                for active_group in active_groups:
-                    if not self._in_schedule(active_group):
-                        continue
-                    accounts = svc.get_accounts(active_group.id)
-                    account = next((a for a in accounts if a.enabled and a.status in ("PENDING", "TRADING")), None)
-                    if account:
-                        self._write_trade(account.nt8_account, "", "", 0, 0, 0, close_all=True)
-                        log.info(f"CYCLE_END: CLOSE_ALL on [{account.nt8_account}]")
-                        break
-            finally:
-                db.close()
-
-    def _handle_add_position(self, signal: dict):
-        """ADD_POSITION del MT5 → añade contratos a la cuenta activa"""
-        with self._lock:
-            db = SessionLocal()
-            try:
-                svc = AccountService(db)
-                groups = svc.get_all_groups()
-                active_groups = [g for g in groups if g.active]
-                for active_group in active_groups:
-                    if not self._in_schedule(active_group):
-                        continue
-                    accounts = svc.get_accounts(active_group.id)
-                    account = next((a for a in accounts if a.enabled and a.status in ("PENDING", "TRADING")), None)
-                    if not account:
-                        continue
-                    direction = self.current_trend
-                    direction_str = "LONG" if direction > 0 else "SHORT"
-                    ct = max(1, account.ct)
-                    self._write_trade(account.nt8_account, "ENTER_" + direction_str, "MNQ 09-26", ct, 0, 0)
-                    log.debug(f"ADD_POSITION: {account.nt8_account}")
-                    break
-            finally:
-                db.close()
+    def _resolve_instrument(self, signal_instrument: str) -> str:
+        """Traduce el simbolo del EA (USTEC, NAS100, ...) al futuro de NT8 usando el symbols map.
+        Si no hay mapeo -> instrumento por defecto configurable."""
+        db = SessionLocal()
+        try:
+            if signal_instrument and signal_instrument != "?":
+                m = db.query(SymbolMap).filter(SymbolMap.mt5_symbol == signal_instrument.upper()).first()
+                if m:
+                    return m.nt8_instrument
+                log.info(f"Symbol '{signal_instrument}' sin mapeo en symbols map -> default")
+            return self._get_config("default_instrument") or "MNQ 09-26"
+        finally:
+            db.close()
 
     def on_signal(self, signal: dict):
         action = signal.get("action", "").upper()
-        instrument = signal.get("instrument", "YM 09-26")
+        instrument = self._resolve_instrument(signal.get("instrument", "?"))
         order_data = signal.get("order", {})
         sl_ticks = order_data.get("sl_ticks", 75)
         tp_ticks = order_data.get("tp_ticks", 90)
@@ -357,12 +432,12 @@ class OrchestratorEngine:
                 if not state:
                     return
 
-                if pnl >= account.tp:
+                if pnl >= account.tpc:
                     account.status = "TP_TOUCHED"
                     db.commit()
                     self._next_account(account.group_id, state, db)
 
-                elif abs(pnl) >= account.sl and pnl < 0:
+                elif abs(pnl) >= account.slc and pnl < 0:
                     account.status = "SL_TOUCHED"
                     db.commit()
                     self._next_account(account.group_id, state, db)
@@ -387,6 +462,14 @@ class OrchestratorEngine:
             (a for a in accounts if a.id not in state["processed"] and a.status == "PENDING"),
             None
         )
+
+        # NUNCA rotar ni resetear mientras alguna cuenta tenga posicion abierta:
+        # esperar a que la cuenta activa se cierre de verdad antes de activar la siguiente.
+        if self._group_has_open_positions(db, group_id):
+            log.info(f"Group {group_id}: rotacion aplazada, posiciones aun abiertas")
+            state["processed"] = state["processed"][:-1]
+            db.commit()
+            return
 
         if next_acc:
             # Reset all TRADING accounts in this group (safety)
@@ -422,7 +505,8 @@ class OrchestratorEngine:
                         a.position = "FLAT"
                         a.trades_today = 0
                         a.daily_start_realized = a.last_realized  # Baseline diario
-                        a.round_start_realized = a.last_realized  # Baseline para nueva ronda
+                        a.round_baseline_set = False  # Permitir que se recalcule
+                        a.round_pnl = 0.0
                         a.round_num = new_round
                     first = next((a for a in svc.get_accounts(group_id) if a.enabled), None)
                     if first:
@@ -486,11 +570,31 @@ class OrchestratorEngine:
                 "engine_active": self._is_engine_active(),
                 "mt5_connected": self._is_mt5_connected(),
                 "last_signal_time": self.last_signal_time,
-                "signal_log": self.signal_log[-20:],  # last 20 entries
+                "signal_log": self.signal_log[-50:],  # last 50 entries
+                "activity_log": self._get_activity_log(50),
                 "nt8_accounts": self._get_nt8_accounts()
             }
         finally:
             db.close()
+
+    def _get_activity_log(self, limit: int = 50) -> list:
+        """Ultimas entradas del ActivityLog persistente (para el WebSocket)"""
+        try:
+            db = SessionLocal()
+            try:
+                entries = db.query(ActivityLog).order_by(ActivityLog.id.desc()).limit(limit).all()
+                return [{
+                    "id": e.id,
+                    "timestamp": e.timestamp.isoformat() if e.timestamp else "",
+                    "category": e.category or "INFO",
+                    "message": e.message or "",
+                    "account": e.account or "",
+                    "group_id": e.group_id,
+                } for e in entries]
+            finally:
+                db.close()
+        except:
+            return []
 
     def _is_nt8_connected(self) -> bool:
         try:
@@ -514,10 +618,20 @@ class OrchestratorEngine:
             pass
         return ""
 
-    def _add_log(self, msg: str):
-        self.signal_log.append(f"{datetime.now().strftime('%H:%M:%S')} {msg}")
-        if len(self.signal_log) > 100:
-            self.signal_log = self.signal_log[-50:]
+    def _add_log(self, msg: str, category: str = "INFO", account: str = None, group_id: int = None):
+        entry = f"{datetime.now().strftime('%H:%M:%S')} {msg}"
+        self.signal_log.append(entry)
+        if len(self.signal_log) > 200:
+            self.signal_log = self.signal_log[-100:]
+        # Persistir en BD
+        try:
+            db = SessionLocal()
+            db.add(ActivityLog(timestamp=datetime.utcnow(), category=category,
+                               message=msg, account=account, group_id=group_id))
+            db.commit()
+            db.close()
+        except:
+            pass
 
     def _is_engine_active(self) -> bool:
         try:
@@ -607,7 +721,6 @@ class OrchestratorEngine:
             if not pos_list:
                 # No positions → reset cycle tracking
                 self._cycle_start_realized.pop(acc_name, None)
-                self._cycle_start_time.pop(acc_name, None)
                 continue
 
             acc = db.query(Account).filter(Account.nt8_account == acc_name).first()
@@ -633,16 +746,14 @@ class OrchestratorEngine:
             # TPC/SLC check
             if cycle_pnl >= acc.tpc:
                 self._write_trade(acc_name, "", "", 0, 0, 0, close_all=True)
-                self._add_log(f"{acc_name}: CYCLE TP +${cycle_pnl:.0f} ≥ +${acc.tpc:.0f} → closed")
+                self._add_log(f"{acc_name}: CYCLE TP +${cycle_pnl:.0f} ≥ +${acc.tpc:.0f} → closed", category="CYCLE", account=acc_name)
                 self._cycle_start_realized.pop(acc_name, None)
-                self._cycle_start_time.pop(acc_name, None)
                 break
 
             elif cycle_pnl <= -acc.slc:
                 self._write_trade(acc_name, "", "", 0, 0, 0, close_all=True)
-                self._add_log(f"{acc_name}: CYCLE SL -${abs(cycle_pnl):.0f} ≥ -${acc.slc:.0f} → closed")
+                self._add_log(f"{acc_name}: CYCLE SL -${abs(cycle_pnl):.0f} ≥ -${acc.slc:.0f} → closed", category="CYCLE", account=acc_name)
                 self._cycle_start_realized.pop(acc_name, None)
-                self._cycle_start_time.pop(acc_name, None)
                 break
 
         if not nt8_accounts:
@@ -680,8 +791,9 @@ class OrchestratorEngine:
             acc.total_pnl = round((acc.balance + unrealized) - (acc.starting_balance or 0), 2)
 
             # Calcular PNL Ronda
-            if not acc.round_start_realized:
+            if not acc.round_baseline_set:
                 acc.round_start_realized = realized
+                acc.round_baseline_set = True
             round_baseline = acc.round_start_realized or 0
             acc.round_pnl = round((realized - round_baseline) + unrealized, 2)
 
@@ -712,7 +824,7 @@ class OrchestratorEngine:
                 if pos_list:
                     self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                     self._last_close_time[name] = datetime.now().timestamp()
-                self._add_log(f"{name}: GLOBAL TP +${acc.total_pnl:.0f} ≥ +${acc.tpg:.0f} → disabled")
+                self._add_log(f"{name}: GLOBAL TP +${acc.total_pnl:.0f} ≥ +${acc.tpg:.0f} → disabled", category="GLOBAL", account=name)
                 log.info(f"TPG {name}: total={acc.total_pnl:.0f} >= {acc.tpg}")
 
             elif acc.slg and acc.slg > 0 and acc.total_pnl <= -acc.slg and acc.status in ("PENDING", "TRADING", "TP_RONDA", "SL_RONDA"):
@@ -722,7 +834,7 @@ class OrchestratorEngine:
                 if pos_list:
                     self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                     self._last_close_time[name] = datetime.now().timestamp()
-                self._add_log(f"{name}: GLOBAL SL -${abs(acc.total_pnl):.0f} ≥ -${acc.slg:.0f} → disabled")
+                self._add_log(f"{name}: GLOBAL SL -${abs(acc.total_pnl):.0f} ≥ -${acc.slg:.0f} → disabled", category="GLOBAL", account=name)
                 log.info(f"SLG {name}: total={acc.total_pnl:.0f} <= -{acc.slg}")
 
             if check_pnl >= acc.pdpt and acc.status in ("PENDING", "TRADING"):
@@ -730,7 +842,7 @@ class OrchestratorEngine:
                 self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                 self._last_close_time[name] = datetime.now().timestamp()
                 tag = "ROUND" if mode == "continuo" else "DAILY"
-                self._add_log(f"{name}: {tag} TP +${check_pnl:.0f} ≥ +${acc.pdpt:.0f} → rotating")
+                self._add_log(f"{name}: {tag} TP +${check_pnl:.0f} ≥ +${acc.pdpt:.0f} → rotating", category="ROTATION", account=name)
                 log.info(f"TP {name}: {tag} pnl={check_pnl:.0f} >= {acc.pdpt}")
 
             elif check_pnl <= -acc.pdll and acc.status in ("PENDING", "TRADING"):
@@ -738,7 +850,7 @@ class OrchestratorEngine:
                 self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                 self._last_close_time[name] = datetime.now().timestamp()
                 tag = "ROUND" if mode == "continuo" else "DAILY"
-                self._add_log(f"{name}: {tag} SL -${abs(check_pnl):.0f} ≥ -${acc.pdll:.0f} → rotating")
+                self._add_log(f"{name}: {tag} SL -${abs(check_pnl):.0f} ≥ -${acc.pdll:.0f} → rotating", category="ROTATION", account=name)
                 log.info(f"SL {name}: {tag} pnl={check_pnl:.0f} <= -{acc.pdll}")
 
             # If account was TP/SL and position is now closed, rotate

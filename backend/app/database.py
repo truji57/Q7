@@ -45,6 +45,38 @@ def _run_migrations():
     inspector = inspect(engine)
     conn = engine.connect()
 
+    # Seed default symbol maps if the table is empty
+    if "symbol_maps" in inspector.get_table_names():
+        try:
+            rows = conn.execute(text("SELECT COUNT(*) FROM symbol_maps")).scalar()
+            if rows == 0:
+                defaults = [
+                    ("USTEC", "MNQ 09-26"),
+                    ("NAS100", "MNQ 09-26"),
+                    ("US100", "MNQ 09-26"),
+                    ("MYM", "MYM 09-26"),
+                    ("MES", "MES 09-26"),
+                    ("MGC", "MGC 09-26"),
+                ]
+                for m, n in defaults:
+                    conn.execute(
+                        text("INSERT OR IGNORE INTO symbol_maps (mt5_symbol, nt8_instrument) VALUES (:m, :n)"),
+                        {"m": m, "n": n},
+                    )
+                conn.commit()
+        except:
+            pass
+
+    # Seed default_instrument config if missing
+    if "config" in inspector.get_table_names():
+        try:
+            cnt = conn.execute(text("SELECT COUNT(*) FROM config WHERE key = 'default_instrument'")).scalar()
+            if cnt == 0:
+                conn.execute(text("INSERT INTO config (key, value) VALUES ('default_instrument', 'MNQ 09-26')"))
+                conn.commit()
+        except:
+            pass
+
     # Migrations for accounts table
     if "accounts" in inspector.get_table_names():
         cols = [c["name"] for c in inspector.get_columns("accounts")]
@@ -54,6 +86,7 @@ def _run_migrations():
             "slc": "ALTER TABLE accounts ADD COLUMN slc FLOAT DEFAULT 2000.0",
             "max_positions": "ALTER TABLE accounts ADD COLUMN max_positions INTEGER DEFAULT 6",
             "round_start_realized": "ALTER TABLE accounts ADD COLUMN round_start_realized FLOAT DEFAULT 0.0",
+            "round_baseline_set": "ALTER TABLE accounts ADD COLUMN round_baseline_set INTEGER DEFAULT 0",
             "daily_start_realized": "ALTER TABLE accounts ADD COLUMN daily_start_realized FLOAT DEFAULT 0.0",
             "daily_baseline_set": "ALTER TABLE accounts ADD COLUMN daily_baseline_set INTEGER DEFAULT 0",
             "last_realized": "ALTER TABLE accounts ADD COLUMN last_realized FLOAT DEFAULT 0.0",

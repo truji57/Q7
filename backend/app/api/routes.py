@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.services.account_service import AccountService
+from app.models.account import ActivityLog, SymbolMap
 from app.schemas.account import (
     GroupCreate, GroupUpdate, GroupSchema,
     AccountCreate, AccountUpdate, AccountSchema,
@@ -97,6 +98,7 @@ def reset_group(group_id: int, db: Session = Depends(get_db)):
         a.position = "FLAT"
         a.trades_today = 0
         a.round_start_realized = a.last_realized  # Baseline de ronda desde PnL actual
+        a.round_baseline_set = False
         a.round_pnl = 0.0
         a.round_num = 0
     db.commit()
@@ -189,14 +191,11 @@ async def post_signal(request: Request):
         orch.mt5_connected = True
         orch.last_mt5_hb = __import__("datetime").datetime.now().timestamp()
         return {"ok": True, "heartbeat": True}
-    elif sig_type == "CYCLE_START":
-        orch._handle_cycle_start(data)
-        orch._add_log(f"CYCLE_START {'LONG' if data.get('direction',1)>0 else 'SHORT'} | {data.get('instrument','?')}")
+    elif sig_type in ("OPEN_LONG", "OPEN_SHORT", "CYCLE_START", "ADD_POSITION"):
+        orch._handle_entry(data)
+        orch._add_log(f"{sig_type} | {data.get('instrument', '?')}")
     elif sig_type == "CYCLE_END":
-        orch._handle_cycle_end(data)
-        orch._add_log(f"CYCLE_END | {data.get('instrument','?')}")
-    elif sig_type == "ADD_POSITION":
-        orch._add_log(f"ADD_POSITION {data.get('instrument','?')}")
+        orch._add_log(f"CYCLE_END ignorado (cierre por limites) | {data.get('instrument','?')}")
     else:
         action = data.get("action", "ENTER_LONG")
         result = orch.send_test_trade(action)
@@ -213,6 +212,7 @@ def get_config(db: Session = Depends(get_db)):
         "bridge_port": svc.get_config("bridge_port") or "5556",
         "debug_mode": svc.get_config("debug_mode") or "false",
         "mt5_terminal_id": svc.get_config("mt5_terminal_id") or "D0E8209F77C8CF37AD8BF550E51FF075",
+        "default_instrument": svc.get_config("default_instrument") or "MNQ 09-26",
     }
 
 
@@ -226,6 +226,36 @@ def update_config(data: dict, db: Session = Depends(get_db)):
         orch = get_orch()
         if orch:
             orch.reload_mt5_config()
+    return {"ok": True}
+
+
+# ========== SYMBOLS MAP ==========
+
+@router.get("/symbols")
+def get_symbols(db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    maps = db.query(SymbolMap).order_by(SymbolMap.id).all()
+    return {
+        "symbols": [{"id": m.id, "mt5_symbol": m.mt5_symbol, "nt8_instrument": m.nt8_instrument} for m in maps],
+        "default_instrument": svc.get_config("default_instrument") or "MNQ 09-26",
+    }
+
+
+@router.put("/symbols")
+def update_symbols(data: dict, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    symbols = data.get("symbols", [])
+    default_instrument = data.get("default_instrument")
+
+    db.query(SymbolMap).delete()
+    for s in symbols:
+        mt5 = (s.get("mt5_symbol") or "").strip().upper()
+        nt8 = (s.get("nt8_instrument") or "").strip()
+        if mt5 and nt8:
+            db.add(SymbolMap(mt5_symbol=mt5, nt8_instrument=nt8))
+    if default_instrument:
+        svc.set_config("default_instrument", default_instrument.strip())
+    db.commit()
     return {"ok": True}
 
 
@@ -315,3 +345,13 @@ def check_update():
 
     has_update = remote and remote != local
     return {"local": local, "remote": remote, "has_update": has_update}
+
+
+# ========== ACTIVITY LOG ==========
+
+@router.get("/activity")
+def get_activity(limit: int = 100, db: Session = Depends(get_db)):
+    entries = db.query(ActivityLog).order_by(ActivityLog.id.desc()).limit(limit).all()
+    return [{"id": e.id, "timestamp": e.timestamp.isoformat() if e.timestamp else "",
+             "category": e.category or "INFO", "message": e.message or "",
+             "account": e.account or "", "group_id": e.group_id} for e in entries]

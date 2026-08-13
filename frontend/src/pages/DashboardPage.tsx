@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useStore } from '../store';
 import { api } from '../lib/api';
 import { Group, Account } from '../types';
@@ -14,6 +14,16 @@ const STATUS_COLORS: Record<string, string> = {
   TP_GLOBAL: 'text-emerald-300',
   SL_GLOBAL: 'text-rose-400',
   ACTIVE: 'text-blue-400',
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  SIGNAL: 'bg-blue-500/10 text-blue-400',
+  TRADE: 'bg-green-500/10 text-green-400',
+  CYCLE: 'bg-purple-500/10 text-purple-400',
+  ROTATION: 'bg-yellow-500/10 text-yellow-400',
+  RESET: 'bg-amber-500/10 text-amber-400',
+  GLOBAL: 'bg-red-500/10 text-red-400',
+  INFO: 'bg-zinc-700/20 text-zinc-500',
 };
 
 type EditCellProps = { value: number; onSave: (v: number) => void; prefix?: string };
@@ -62,6 +72,7 @@ export default function DashboardPage() {
   const state = useStore((s) => s.state);
   const debugMode = useStore((s) => s.debugMode);
   const signalLog = useStore((s) => s.state?.signal_log || []);
+  const activityLog = useStore((s) => s.state?.activity_log || []);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [log, setLog] = useState<string[]>([]);
   const [confirmReset, setConfirmReset] = useState<number | null>(null);
@@ -307,14 +318,19 @@ export default function DashboardPage() {
 
       {/* Activity Log */}
       <div className="mt-8 bg-[#0e0e18] border border-[#1c1c2a] rounded-lg overflow-hidden">
-        <div className="px-4 py-2 border-b border-[#1c1c2a] text-[11px] text-zinc-500 uppercase tracking-wider">Activity</div>
-        <div className="p-3 max-h-40 overflow-y-auto">
-          {log.length === 0 && signalLog.length === 0 && <p className="text-xs text-zinc-600">Events will appear here...</p>}
-          {signalLog.slice(-10).reverse().map((l, i) => (
-            <div key={'s'+i} className="text-[11px] font-mono text-green-500/60 py-0.5 border-b border-[#111122] last:border-0">{l}</div>
-          ))}
-          {log.map((l, i) => (
-            <div key={i} className="text-[11px] font-mono text-zinc-500 py-0.5 border-b border-[#111122] last:border-0">{l}</div>
+        <div className="px-4 py-2 border-b border-[#1c1c2a] flex items-center justify-between">
+          <span className="text-[11px] text-zinc-500 uppercase tracking-wider">Activity</span>
+          <span className="text-[10px] text-zinc-600">Persistente en BD</span>
+        </div>
+        <div className="p-3 max-h-60 overflow-y-auto">
+          {activityLog.length === 0 && signalLog.length === 0 && <p className="text-xs text-zinc-600">Events will appear here...</p>}
+          {activityLog.map((e, i) => (
+            <div key={'a'+i} className={`text-[11px] font-mono py-0.5 border-b border-[#111122] last:border-0 flex gap-2 items-center`}>
+              <span className="text-zinc-600 shrink-0">{e.timestamp ? new Date(e.timestamp).toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : ''}</span>
+              <span className={`shrink-0 text-[9px] px-1 rounded ${CATEGORY_COLORS[e.category] || 'bg-zinc-700/20 text-zinc-500'}`}>{e.category || 'INFO'}</span>
+              {e.account && <span className="shrink-0 text-blue-400/60">{e.account}</span>}
+              <span className="text-zinc-300 truncate">{e.message}</span>
+            </div>
           ))}
         </div>
       </div>

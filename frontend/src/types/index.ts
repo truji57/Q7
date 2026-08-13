@@ -52,6 +52,15 @@ export interface Group {
   accounts: Account[];
 }
 
+export interface ActivityLogEntry {
+  id: number;
+  timestamp: string;
+  category: string;
+  message: string;
+  account: string;
+  group_id: number | null;
+}
+
 export interface DashboardState {
   groups: Group[];
   version: string;
@@ -61,6 +70,7 @@ export interface DashboardState {
   mt5_connected: boolean;
   last_signal_time: string;
   signal_log: string[];
+  activity_log: ActivityLogEntry[];
   nt8_accounts: NT8Account[];
 }
 

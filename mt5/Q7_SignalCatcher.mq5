@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
-//|                                             Q7_SignalCatcher.mq5  |
+//|          Q7_SignalCatcher.mq5  |
 //|                         Monitoriza posiciones de cualquier EA     |
-//|                         y las convierte en señales CYCLE_START    |
+//|                    y las convierte en senales OPEN_LONG/SHORT     |
 //+------------------------------------------------------------------+
 #property copyright "Q7"
 #property version   "1.0"
@@ -134,10 +134,9 @@ void PostHeartbeat()
 //+------------------------------------------------------------------+
 void WriteSignal(int direction, string symbol, double volume)
 {
+   string typeStr = (direction == 1) ? "OPEN_LONG" : "OPEN_SHORT";
    string json = "{";
-   json += "\"type\":\"CYCLE_START\",";
-   json += "\"direction\":" + IntegerToString(direction) + ",";
-   json += "\"atr\":0,";
+   json += "\"type\":\"" + typeStr + "\",";
    json += "\"instrument\":\"" + symbol + "\",";
    json += "\"volume\":" + DoubleToString(volume, 2);
    json += "}";
