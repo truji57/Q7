@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.29",
+    "date": "2026-08-13",
+    "description": "Aviso visual en dashboard cuando INI (capital inicial) esta en 0: celda roja + icono + tooltip, ya que TPG/SLG se calculan sobre PNL Total = Balance - INI"
+  },
+  {
     "version": "v0.28",
     "date": "2026-08-13",
     "description": "Protocolo unificado OPEN_LONG/OPEN_SHORT (handler unico, direccion de la senal, suma a misma cuenta, CYCLE_END eliminado), Symbols Map configurable MT5->NT8, Activity log persistente en tiempo real por WebSocket"

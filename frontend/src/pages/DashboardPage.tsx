@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useStore } from '../store';
 import { api } from '../lib/api';
 import { Group, Account } from '../types';
-import { Pencil, Trash2, TestTube2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, TestTube2, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'text-zinc-500',
@@ -26,14 +26,23 @@ const CATEGORY_COLORS: Record<string, string> = {
   INFO: 'bg-zinc-700/20 text-zinc-500',
 };
 
-type EditCellProps = { value: number; onSave: (v: number) => void; prefix?: string };
+type EditCellProps = { value: number; onSave: (v: number) => void; prefix?: string; warn?: boolean; warnTitle?: string };
 
-function EditCell({ value, onSave, prefix }: EditCellProps) {
+function EditCell({ value, onSave, prefix, warn, warnTitle }: EditCellProps) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(value);
 
   if (!editing) {
-    return <span className="cursor-pointer hover:text-[#4f8cff]" onClick={() => setEditing(true)}>{prefix || ''}{value || 0}</span>;
+    return (
+      <span
+        className={`cursor-pointer hover:text-[#4f8cff] ${warn ? 'text-red-400 font-bold flex items-center justify-center gap-1' : ''}`}
+        onClick={() => setEditing(true)}
+        title={warnTitle}
+      >
+        {warn && <AlertTriangle size={11} className="text-red-400 shrink-0" />}
+        {prefix || ''}{value || 0}
+      </span>
+    );
   }
 
   return (
@@ -276,7 +285,15 @@ export default function DashboardPage() {
                         </td>
                         <td className={`py-2 px-2 text-center text-xs font-semibold ${acc.position === 'LONG' ? 'text-blue-400' : acc.position === 'SHORT' ? 'text-red-400' : 'text-zinc-400'}`}>{acc.position}</td>
                         <td className="py-2 px-2 text-center text-zinc-500 text-xs">{acc.round_num || 0}</td>
-                        <td className="py-2 px-2 text-center"><EditCell value={acc.starting_balance || 0} onSave={(v) => updateAccountField(acc.id, 'starting_balance', v)} prefix="$" /></td>
+                        <td className={`py-2 px-2 text-center ${!acc.starting_balance ? 'bg-red-500/10' : ''}`}>
+                          <EditCell
+                            value={acc.starting_balance || 0}
+                            onSave={(v) => updateAccountField(acc.id, 'starting_balance', v)}
+                            prefix="$"
+                            warn={!acc.starting_balance}
+                            warnTitle="INI en 0: TPG/SLG usan PNL TOTAL = Balance - INI; con INI=0 todo parecera ganancia. Pulsa para configurarlo."
+                          />
+                        </td>
                         <td className="py-2 px-2 text-center text-zinc-300 truncate">${(acc.balance + (acc.open_pnl || 0)).toFixed(0)}</td>
                         <td className={`py-2 px-2 text-center truncate font-semibold ${(acc.total_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                           ${(acc.total_pnl || 0).toFixed(0)}
