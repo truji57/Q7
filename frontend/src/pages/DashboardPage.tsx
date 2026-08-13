@@ -261,8 +261,8 @@ export default function DashboardPage() {
                       <th className="text-center py-2 px-2 font-medium w-[70px]" title="Maximo de posiciones por ciclo">MXP</th>
                       <th className="text-center py-2 px-2 font-medium w-[80px]" title="Take Profit por ciclo">TPC</th>
                       <th className="text-center py-2 px-2 font-medium w-[80px]" title="Stop Loss por ciclo">SLC</th>
-                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Take Profit por ronda">TPxR</th>
-                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Stop Loss por ronda">SLxR</th>
+                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Take Profit por ronda">TPR</th>
+                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Stop Loss por ronda">SLR</th>
                       <th className="text-center py-2 px-2 font-medium w-[65px]" title="Take Profit Global (desactiva cuenta)">TPG</th>
                       <th className="text-center py-2 px-2 font-medium w-[65px]" title="Stop Loss Global (desactiva cuenta)">SLG</th>
                       <th className="text-center py-2 px-2 font-medium" title="Cuenta habilitada">ON</th>
@@ -273,7 +273,7 @@ export default function DashboardPage() {
                       <tr key={acc.id} className={`border-b border-[#111122] hover:bg-[#111122]/50 ${!acc.enabled ? 'opacity-40' : ''}`}>
                         <td className="py-2 px-2">
                           <span className={`text-[10px] font-semibold ${STATUS_COLORS[acc.status] || 'text-zinc-500'}`}>
-                            {acc.status === 'TP_RONDA' ? 'TPxR ✓' : acc.status === 'SL_RONDA' ? 'SLxR ✗' : acc.status === 'TP_GLOBAL' ? 'TPG ✓' : acc.status === 'SL_GLOBAL' ? 'SLG ✗' : acc.status === 'TRADING' ? 'ACTIVE' : acc.status}
+                            {acc.status === 'TP_RONDA' ? 'TPR ✓' : acc.status === 'SL_RONDA' ? 'SLR ✗' : acc.status === 'TP_GLOBAL' ? 'TPG ✓' : acc.status === 'SL_GLOBAL' ? 'SLG ✗' : acc.status === 'TRADING' ? 'ACTIVE' : acc.status}
                           </span>
                         </td>
                         <td className="py-2 px-2">
@@ -362,7 +362,7 @@ export default function DashboardPage() {
               <li>Evalua TPG/SLG y <span className="text-red-400">deshabilita</span> cuentas que los hayan alcanzado</li>
               <li>Reinicia el orden de cuentas empezando por la primera</li>
               <li><span className="text-amber-400">Resetea:</span> PNL RONDA, OPEN, ronda, posicion, trades</li>
-              <li><span className="text-green-400">No toca:</span> INI, BALANCE, PNL TOTAL, PNL DIA, CT, MXP, TPC, SLC, TPxR, SLxR, TPG, SLG</li>
+              <li><span className="text-green-400">No toca:</span> INI, BALANCE, PNL TOTAL, PNL DIA, CT, MXP, TPC, SLC, TPR, SLR, TPG, SLG</li>
             </ul>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setConfirmReset(null)} className="px-4 py-2 text-xs text-zinc-400 bg-zinc-700/20 border border-zinc-600/30 rounded hover:bg-zinc-700/40">Cancelar</button>

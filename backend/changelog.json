@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.30",
+    "date": "2026-08-13",
+    "description": "Frontend: renombrado visual TPxR/SLxR a TPR/SLR (headers, celdas de estado y formulario de grupo), reorden de campos de defaults (CT, MXP, TPC, SLC, TPR, SLR, TPG, SLG) y mayor ancho del formulario de grupo (max-w-6xl)"
+  },
+  {
     "version": "v0.29",
     "date": "2026-08-13",
     "description": "Aviso visual en dashboard cuando INI (capital inicial) esta en 0: celda roja + icono + tooltip, ya que TPG/SLG se calculan sobre PNL Total = Balance - INI"
