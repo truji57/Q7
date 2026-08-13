@@ -91,7 +91,7 @@ export default function AccountsPage() {
     <div className="max-w-6xl">
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => { setShowGroupForm(true); setEditingGroup(null); setGroupForm({     name: '', direction: 'BOTH', mode: 'SEQUENTIAL', stop_on_reset: true, reset_mode: 'diario' }); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#4f8cff]/10 border border-[#4f8cff]/30 text-[#4f8cff] rounded-md text-xs font-semibold hover:bg-[#4f8cff]/20">
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#6b7280]/10 border border-[#6b7280]/30 text-zinc-300 rounded-md text-xs font-semibold hover:bg-[#6b7280]/20">
           <Plus size={13} /> New Group
         </button>
       </div>
@@ -124,7 +124,7 @@ export default function AccountsPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={saveGroup} className="px-4 py-1.5 bg-[#4f8cff] text-white rounded text-xs font-semibold">{editingGroup ? 'Update' : 'Create'}</button>
+            <button onClick={saveGroup} className="px-4 py-1.5 bg-[#6b7280] text-white rounded text-xs font-semibold">{editingGroup ? 'Update' : 'Create'}</button>
             <button onClick={() => { setShowGroupForm(false); setEditingGroup(null); }} className="px-4 py-1.5 bg-[#1a1a2a] text-zinc-400 rounded text-xs">Cancel</button>
           </div>
         </div>
@@ -187,8 +187,8 @@ export default function AccountsPage() {
             <span>SLC: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_slc} onChange={(e) => updateGroupField(g.id, 'default_slc', parseFloat(e.target.value) || 0)} /></span>
             <span>TPR: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_pdpt} onChange={(e) => updateGroupField(g.id, 'default_pdpt', parseFloat(e.target.value) || 0)} /></span>
             <span>SLR: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_pdll} onChange={(e) => updateGroupField(g.id, 'default_pdll', parseFloat(e.target.value) || 0)} /></span>
-            <span>TPG: <input type="number" className="w-20 text-center bg-transparent border border-[#4f8cff]/30 rounded px-1" value={g.default_tpg || 0} onChange={(e) => updateGroupField(g.id, 'default_tpg', parseFloat(e.target.value) || 0)} /></span>
-            <span>SLG: <input type="number" className="w-20 text-center bg-transparent border border-[#4f8cff]/30 rounded px-1" value={g.default_slg || 0} onChange={(e) => updateGroupField(g.id, 'default_slg', parseFloat(e.target.value) || 0)} /></span>
+            <span>TPG: <input type="number" className="w-20 text-center bg-transparent border border-[#6b7280]/30 rounded px-1" value={g.default_tpg || 0} onChange={(e) => updateGroupField(g.id, 'default_tpg', parseFloat(e.target.value) || 0)} /></span>
+            <span>SLG: <input type="number" className="w-20 text-center bg-transparent border border-[#6b7280]/30 rounded px-1" value={g.default_slg || 0} onChange={(e) => updateGroupField(g.id, 'default_slg', parseFloat(e.target.value) || 0)} /></span>
             <button
               onClick={async () => {
                 if (!confirm('Apply defaults to ALL accounts in this group?')) return;
@@ -201,7 +201,7 @@ export default function AccountsPage() {
                 }
                 load();
               }}
-              className="ml-auto px-2 py-1 bg-[#4f8cff]/10 border border-[#4f8cff]/30 text-[#4f8cff] rounded text-[10px] font-semibold hover:bg-[#4f8cff]/20"
+              className="ml-auto px-2 py-1 bg-[#6b7280]/10 border border-[#6b7280]/30 text-zinc-300 rounded text-[10px] font-semibold hover:bg-[#6b7280]/20"
             >
               Apply to all
             </button>
@@ -212,7 +212,7 @@ export default function AccountsPage() {
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-zinc-500">Accounts ({g.accounts.length})</span>
               <button onClick={() => setShowAccountForm(g.id)}
-                className="flex items-center gap-1 text-[10px] text-[#4f8cff] hover:text-[#6fa6ff]">
+                className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-200">
                 <Plus size={11} /> Add
               </button>
             </div>
@@ -236,7 +236,7 @@ export default function AccountsPage() {
                       ))}
                   </select>
                 </div>
-                <button onClick={saveAccount} className="px-3 py-0.5 bg-[#4f8cff] text-white rounded text-[10px]"><Save size={11} /></button>
+                <button onClick={saveAccount} className="px-3 py-0.5 bg-[#6b7280] text-white rounded text-[10px]"><Save size={11} /></button>
                 <button onClick={() => setShowAccountForm(null)} className="px-3 py-0.5 bg-[#1a1a2a] text-zinc-400 rounded text-[10px]"><X size={11} /></button>
               </div>
             )}
@@ -249,7 +249,7 @@ export default function AccountsPage() {
                   <span className="text-zinc-600">({a.nt8_account})</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <button onClick={() => testAccount(a.id)} className="p-1 text-zinc-500 hover:text-[#4f8cff]"><TestTube2 size={11} /></button>
+                  <button onClick={() => testAccount(a.id)} className="p-1 text-zinc-500 hover:text-zinc-300"><TestTube2 size={11} /></button>
                   <button onClick={() => deleteAccount(a.id)} className="p-1 text-zinc-500 hover:text-red-400"><Trash2 size={11} /></button>
                 </div>
               </div>

@@ -17,7 +17,8 @@ export default function Sidebar() {
     <>
       <aside className="w-56 bg-[#0e0e18] border-r border-[#1c1c2a] flex-col shrink-0 hidden md:flex">
         <div className="px-5 py-4 border-b border-[#1c1c2a]">
-          <h1 className="text-lg font-bold tracking-[.25em] text-[#4f8cff]">Q7</h1>
+          <img src="/nexxo_icon.png?v=4" alt="Nexxo" className="w-48 h-48 object-contain mb-2 mx-auto" />
+          <h1 className="text-lg font-bold tracking-[.25em] text-zinc-300">Nexxo</h1>
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-zinc-600">TRADING ENGINE</span>
             {version && <span className="text-[10px] text-zinc-500">{version}</span>}
@@ -33,7 +34,7 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                   isActive
-                    ? 'bg-[#1a1a30] text-[#4f8cff]'
+                    ? 'bg-[#27272a] text-zinc-200'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#111122]'
                 }`
               }
@@ -61,7 +62,7 @@ export default function Sidebar() {
             end={item.to === '/'}
             className={({ isActive }) =>
               `flex flex-col items-center gap-0.5 px-4 py-1 text-[10px] ${
-                isActive ? 'text-[#4f8cff]' : 'text-zinc-500'
+                isActive ? 'text-zinc-300' : 'text-zinc-500'
               }`
             }
           >

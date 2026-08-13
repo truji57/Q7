@@ -212,7 +212,7 @@ export default function ConfigPage() {
 
           <button
             onClick={handleSaveSymbols}
-            className="mt-3 flex items-center gap-2 px-4 py-2 bg-[#4f8cff] text-white rounded-md text-xs font-semibold hover:bg-[#3b6fd4] transition-colors"
+            className="mt-3 flex items-center gap-2 px-4 py-2 bg-[#6b7280] text-white rounded-md text-xs font-semibold hover:bg-[#52525b] transition-colors"
           >
             <Save size={14} />
             {symbolsSaved ? 'Guardado!' : 'Guardar Symbols Map'}
@@ -239,7 +239,7 @@ export default function ConfigPage() {
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              className="flex items-center gap-2 px-4 py-2 bg-[#4f8cff] text-white rounded-md text-xs font-semibold hover:bg-[#3b6fd4] transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[#6b7280] text-white rounded-md text-xs font-semibold hover:bg-[#52525b] transition-colors"
             >
               <Save size={14} />
               {saved ? 'Saved!' : 'Save Settings'}
@@ -263,7 +263,7 @@ export default function ConfigPage() {
               {changelog.map((entry, i) => (
                 <div key={i} className={`pb-3 ${i < changelog.length - 1 ? 'border-b border-[#1a1a2a]' : ''}`}>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold text-[#4f8cff]">{entry.version}</span>
+                    <span className="text-xs font-semibold text-zinc-300">{entry.version}</span>
                     <span className="text-[10px] text-zinc-600">{entry.date}</span>
                   </div>
                   <p className="text-[11px] text-zinc-400 leading-relaxed">{entry.description}</p>

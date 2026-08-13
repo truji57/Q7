@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.31",
+    "date": "2026-08-13",
+    "description": "Rebrand visual Q7->Nexxo (sidebar, titulos, title HTML), tema de acento en escala de grises (botones, nav, estados, categorias) y nuevo logo Nexxo en la barra lateral"
+  },
+  {
     "version": "v0.30",
     "date": "2026-08-13",
     "description": "Frontend: renombrado visual TPxR/SLxR a TPR/SLR (headers, celdas de estado y formulario de grupo), reorden de campos de defaults (CT, MXP, TPC, SLC, TPR, SLR, TPG, SLG) y mayor ancho del formulario de grupo (max-w-6xl)"

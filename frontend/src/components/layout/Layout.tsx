@@ -13,7 +13,7 @@ const pageTitles: Record<string, string> = {
 
 export default function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const title = pageTitles[location.pathname] || 'Q7';
+  const title = pageTitles[location.pathname] || 'Nexxo';
   const { setState, setWsConnected, state } = useStore();
   const setDebug = useStore((s) => s.setDebugMode);
   const wsConnected = useStore((s) => s.wsConnected);

@@ -6,18 +6,18 @@ import { Pencil, Trash2, TestTube2, ChevronDown, ChevronRight, AlertTriangle } f
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'text-zinc-500',
-  TRADING: 'text-blue-400',
+  TRADING: 'text-zinc-200',
   TP_RONDA: 'text-green-400',
   SL_RONDA: 'text-red-400',
   TP_TOUCHED: 'text-green-400',
   SL_TOUCHED: 'text-red-400',
   TP_GLOBAL: 'text-emerald-300',
   SL_GLOBAL: 'text-rose-400',
-  ACTIVE: 'text-blue-400',
+  ACTIVE: 'text-zinc-200',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  SIGNAL: 'bg-blue-500/10 text-blue-400',
+  SIGNAL: 'bg-zinc-500/10 text-zinc-300',
   TRADE: 'bg-green-500/10 text-green-400',
   CYCLE: 'bg-purple-500/10 text-purple-400',
   ROTATION: 'bg-yellow-500/10 text-yellow-400',
@@ -35,7 +35,7 @@ function EditCell({ value, onSave, prefix, warn, warnTitle }: EditCellProps) {
   if (!editing) {
     return (
       <span
-        className={`cursor-pointer hover:text-[#4f8cff] ${warn ? 'text-red-400 font-bold flex items-center justify-center gap-1' : ''}`}
+        className={`cursor-pointer hover:text-zinc-200 ${warn ? 'text-red-400 font-bold flex items-center justify-center gap-1' : ''}`}
         onClick={() => setEditing(true)}
         title={warnTitle}
       >
@@ -168,7 +168,7 @@ export default function DashboardPage() {
                       {group.active ? 'ACTIVE' : 'INACTIVE'}
                     </span>
                     {group.active && group.schedule_enabled && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${inSchedule ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'}`}>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${inSchedule ? 'bg-zinc-500/10 text-zinc-300 border-zinc-500/30' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'}`}>
                         {inSchedule ? 'IN SCHEDULE' : 'OUTSIDE'}
                       </span>
                     )}
@@ -283,7 +283,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="text-[10px] text-zinc-600 truncate">{acc.nt8_account}</div>
                         </td>
-                        <td className={`py-2 px-2 text-center text-xs font-semibold ${acc.position === 'LONG' ? 'text-blue-400' : acc.position === 'SHORT' ? 'text-red-400' : 'text-zinc-400'}`}>{acc.position}</td>
+                        <td className={`py-2 px-2 text-center text-xs font-semibold ${acc.position === 'LONG' ? 'text-zinc-200' : acc.position === 'SHORT' ? 'text-red-400' : 'text-zinc-400'}`}>{acc.position}</td>
                         <td className="py-2 px-2 text-center text-zinc-500 text-xs">{acc.round_num || 0}</td>
                         <td className={`py-2 px-2 text-center ${!acc.starting_balance ? 'bg-red-500/10' : ''}`}>
                           <EditCell
@@ -345,7 +345,7 @@ export default function DashboardPage() {
             <div key={'a'+i} className={`text-[11px] font-mono py-0.5 border-b border-[#111122] last:border-0 flex gap-2 items-center`}>
               <span className="text-zinc-600 shrink-0">{e.timestamp ? new Date(e.timestamp).toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : ''}</span>
               <span className={`shrink-0 text-[9px] px-1 rounded ${CATEGORY_COLORS[e.category] || 'bg-zinc-700/20 text-zinc-500'}`}>{e.category || 'INFO'}</span>
-              {e.account && <span className="shrink-0 text-blue-400/60">{e.account}</span>}
+              {e.account && <span className="shrink-0 text-zinc-400/60">{e.account}</span>}
               <span className="text-zinc-300 truncate">{e.message}</span>
             </div>
           ))}
