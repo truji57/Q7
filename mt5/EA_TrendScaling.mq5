@@ -31,7 +31,7 @@ CTrade trade;
 input group "=== Identificacion ==="
 input int      InpMagic              = 990001;      // Numero magico del EA
 input string   InpComentario         = "TrendScale"; // Comentario en ordenes
-input bool     InpSignalMode      = false;  // Modo señales (no abre trades, solo escribe señales)
+input bool     InpSignalMode      = true;   // Modo señales (no abre trades, solo escribe señales)
 input bool     InpShowPanel       = true;   // Mostrar panel BUY/SELL en el grafico
 
 input group "=== Deteccion de tendencia ==="
@@ -95,6 +95,7 @@ double   g_dailyStartEquity  = 0.0;
 datetime g_dailyDay          = 0;
 bool     g_eaHalted          = false;
 bool     g_dailyBlocked      = false;
+datetime g_initTime          = 0;   // momento de OnInit, para cooldown de arranque
 
 double   g_ultimoLote        = 0.0;
 double   g_ultimoPrecioEntrada = 0.0;
@@ -107,6 +108,10 @@ int      g_reentryCooldown = 0;
 int      g_signalCount = 0;
 datetime g_ultimaSenalTime = 0;
 string   g_ultimaSenalType  = "";
+int      g_ticksSinTendencia = 0;
+
+// Persistencia de estado (sobrevive a recargas del EA: recompilar / reiniciar MT5)
+string   g_stateFile = "Q7\\signals\\ea_trendscaling_state.json";
 
 // Trailing equity de ciclo
 bool     g_trailingArmado    = false;
@@ -193,6 +198,15 @@ void ReconstruirEstadoCiclo()
 // Devuelve 1 = tendencia alcista, -1 = bajista, 0 = sin tendencia clara
 int DetectarTendencia()
 {
+   // Warm-up guard: los indicadores no emiten valores validos hasta que
+   // han calculado al menos su propio periodo (lo que tarda segundos con
+   // historia cargada; sin historia, se espera hasta tener las barras minimas)
+   int ready = MathMin(BarsCalculated(handleEMAFast),
+                       MathMin(BarsCalculated(handleEMASlow),
+                               BarsCalculated(handleADX)));
+   if(ready < MathMax(InpEMASlow, InpADXPeriod))
+      return 0;
+
    double emaFast[], emaSlow[], adx[];
    ArraySetAsSeries(emaFast, true);
    ArraySetAsSeries(emaSlow, true);
@@ -436,6 +450,8 @@ void CerrarTodoElCiclo()
    g_direccionCiclo      = 0;
    g_shownStructureMsg   = false;
    g_reentryCooldown     = 5;  // 5 ticks de espera antes de re-abrir
+   g_ticksSinTendencia   = 0;
+   GuardarEstado();
 }
 
 //====================== LOTAJE INTELIGENTE ==================================
@@ -485,6 +501,83 @@ void PostSignal(string type, int direction, double atr, string extra="")
    {
       Print("Q7: ERR file ", GetLastError());
    }
+}
+
+//--- Persiste el estado del EA para sobrevivir a recargas (recompilar / reiniciar MT5).
+//    El EA NO habla con el orquestador: solo recuerda la ultima señal que ya envio
+//    para no re-emitirla al recargar (evita que el orquestador sume contratos de mas).
+void GuardarEstado()
+{
+   if(!InpSignalMode) return;
+   int h = FileOpen(g_stateFile, FILE_WRITE|FILE_TXT);
+   if(h == INVALID_HANDLE) return;
+   string content = StringFormat(
+      "{\"estado\":%d,\"dir\":%d,\"niveles\":%d,\"senalType\":\"%s\",\"senalTime\":%d,\"count\":%d,\"lote\":%.2f,\"precio\":%.5f}",
+      (int)g_estado, g_direccionCiclo, g_nivelesAlcanzados,
+      g_ultimaSenalType, (int)g_ultimaSenalTime, g_signalCount,
+      g_ultimoLote, g_ultimoPrecioEntrada);
+   FileWriteString(h, content);
+   FileClose(h);
+}
+
+//--- Restaura el estado persistido (solo en modo señales).
+void CargarEstado()
+{
+   if(!InpSignalMode) return;
+   if(!FileIsExist(g_stateFile)) return;
+   int h = FileOpen(g_stateFile, FILE_READ|FILE_TXT);
+   if(h == INVALID_HANDLE) return;
+   string content = FileReadString(h);
+   FileClose(h);
+
+   // parseo minimo del JSON (sin librerias)
+   g_estado          = (ESTADO_CICLO)LeerJsonInt(content, "estado");
+   g_direccionCiclo  = LeerJsonInt(content, "dir");
+   g_nivelesAlcanzados = LeerJsonInt(content, "niveles");
+   g_ultimaSenalType = LeerJsonStr(content, "senalType");
+   g_ultimaSenalTime = (datetime)LeerJsonInt(content, "senalTime");
+   g_signalCount     = LeerJsonInt(content, "count");
+   g_ultimoLote      = LeerJsonDbl(content, "lote");
+   g_ultimoPrecioEntrada = LeerJsonDbl(content, "precio");
+
+   if(g_ultimaSenalType == "") g_ultimaSenalType = "";
+   if(g_estado != SIN_SESGO && g_estado != EN_CICLO) g_estado = SIN_SESGO;
+   Print("Q7: estado restaurado -> ", (g_estado==EN_CICLO ? "EN_CICLO" : "SIN_SESGO"),
+         " dir=", g_direccionCiclo, " nivel=", g_nivelesAlcanzados);
+}
+
+int LeerJsonInt(string s, string key)
+{
+   string v = LeerJsonStr(s, key);
+   if(v == "") return 0;
+   return (int)StringToInteger(v);
+}
+
+double LeerJsonDbl(string s, string key)
+{
+   string v = LeerJsonStr(s, key);
+   if(v == "") return 0.0;
+   return StringToDouble(v);
+}
+
+string LeerJsonStr(string s, string key)
+{
+   string needle = "\"" + key + "\":";
+   int pos = StringFind(s, needle);
+   if(pos < 0) return "";
+   int start = pos + StringLen(needle);
+   if(StringGetCharacter(s, start) == '"')
+   {
+      start++;
+      int end = StringFind(s, "\"", start);
+      if(end < 0) return "";
+      return StringSubstr(s, start, end - start);
+   }
+   int end = StringFind(s, ",", start);
+   int end2 = StringFind(s, "}", start);
+   if(end2 >= 0 && (end < 0 || end2 < end)) end = end2;
+   if(end < 0) return "";
+   return StringSubstr(s, start, end - start);
 }
 
 //--- Dibuja flecha en el grafico
@@ -537,6 +630,8 @@ void AbrirPrimeraPosicion(int direccion)
    g_ultimoPrecioEntrada    = precio;
    g_nivelesAlcanzados      = 0;
    g_shownStructureMsg      = false;
+   g_ticksSinTendencia      = 0;
+   GuardarEstado();
 }
 
 void EvaluarSumaPosicion()
@@ -614,6 +709,7 @@ void EvaluarSumaPosicion()
    g_nivelesAlcanzados++;
    g_ultimoLote          = nuevoLote;
    g_ultimoPrecioEntrada = precioActual;
+   GuardarEstado();
 }
 
 //====================== CICLO DE VIDA DEL EA =================================
@@ -635,10 +731,17 @@ int OnInit()
    g_equityPico       = AccountInfoDouble(ACCOUNT_EQUITY);
    g_dailyStartEquity = AccountInfoDouble(ACCOUNT_EQUITY);
    g_dailyDay         = 0; // fuerza recalculo en el primer tick
+   g_initTime         = TimeCurrent();
 
    trade.SetExpertMagicNumber(InpMagic);
 
     ReconstruirEstadoCiclo();
+
+    // En modo señales restauramos la ultima señal enviada (evita re-emitir al recargar)
+    if(InpSignalMode)
+    {
+       CargarEstado();
+    }
 
     // Signal mode path  
     if(InpSignalMode)
@@ -745,6 +848,28 @@ void OnTick()
    {
       if(CheckLimitesCiclo()) return;
       if(CheckTrailingEquity()) return;
+
+      // En modo señales el EA solo analiza: si la tendencia se pierde,
+      // el ciclo terminó para él y puede buscar una nueva entrada.
+      if(InpSignalMode)
+      {
+         int t = DetectarTendencia();
+         if(t == 0)
+         {
+            g_ticksSinTendencia++;
+            if(g_ticksSinTendencia >= 5)
+            {
+               Print("Q7: tendencia perdida -> SIN_SESGO (listo para nueva señal)");
+               CerrarTodoElCiclo();
+               return;
+            }
+         }
+         else
+         {
+            g_ticksSinTendencia = 0;
+         }
+      }
+
       EvaluarSumaPosicion();
       return;
    }
@@ -755,6 +880,10 @@ void OnTick()
       g_reentryCooldown--;
       return;
    }
+   // Cooldown de arranque: no buscar entrada en los primeros segundos tras OnInit
+   // (evita orden espuria al iniciar MT5 o al anadir el EA por primera vez)
+   if(TimeCurrent() - g_initTime < 5)
+      return;
    int tendencia = DetectarTendencia();
    if(tendencia != 0)
       AbrirPrimeraPosicion(tendencia);

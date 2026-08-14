@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.32",
+    "date": "2026-08-14",
+    "description": "EA_TrendScaling: fix re-emision de senales al recargar/recompilar (persistencia de estado en archivo fuera de los globs del orchestrator, restauracion de ultima senal, cooldown 5s de arranque, warmup sin margen extra)"
+  },
+  {
     "version": "v0.31",
     "date": "2026-08-13",
     "description": "Rebrand visual Q7->Nexxo (sidebar, titulos, title HTML), tema de acento en escala de grises (botones, nav, estados, categorias) y nuevo logo Nexxo en la barra lateral"
