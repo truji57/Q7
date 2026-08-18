@@ -371,8 +371,9 @@ export default function StatisticsPage() {
         <div className="space-y-4">
           {groupStats && (
             <>
-              <div className="grid grid-cols-3 gap-3 max-w-xl">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl">
                 <Kpi label="Net PnL (equipo)" value={fmtMoney(groupStats.team_net_pnl, 0)} accent={groupStats.team_net_pnl >= 0 ? 'pos' : 'neg'} />
+                <Kpi label="Avg Winrate" value={fmtPct(groupStats.avg_winrate)} accent={groupStats.avg_winrate >= 50 ? 'pos' : 'neg'} sub="media de cuentas con trades" />
                 <Kpi label="Trades (equipo)" value={`${groupStats.team_trades}`} />
                 <Kpi label="Max DD (equipo)" value={fmtMoney(-groupStats.team_max_dd, 0)} accent="neg" sub="peor caída combinada (trades cerrados)" />
               </div>

@@ -182,4 +182,5 @@ export interface GroupStats {
   team_net_pnl: number;
   team_trades: number;
   team_max_dd: number;
+  avg_winrate: number;
 }

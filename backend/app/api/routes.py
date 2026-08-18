@@ -433,6 +433,7 @@ def stats_group(group_id: int,
     accounts = db.query(Account).filter(Account.group_id == group_id).all()
     rows = []
     team_net, team_trades = 0.0, 0
+    wr_sum, wr_n = 0.0, 0
     for a in accounts:
         m = st.account_summary(a.id, from_dt, to_dt)
         m.update({"account_id": a.id, "name": a.name, "color": a.color,
@@ -441,6 +442,9 @@ def stats_group(group_id: int,
         rows.append(m)
         team_net += m["net_pnl"]
         team_trades += m["n"]
+        if m["n"] > 0:
+            wr_sum += m["winrate"]
+            wr_n += 1
     rows.sort(key=lambda r: -abs(r["net_pnl"]))
     # Max DD de equipo: curva de pnl acumulado combinando los CIERRES de todas
     # las cuentas (ordenados por hora). Refleja la perdida realizada real.
@@ -462,6 +466,7 @@ def stats_group(group_id: int,
         "team_net_pnl": round(team_net, 2),
         "team_trades": team_trades,
         "team_max_dd": round(team_max_dd, 2),
+        "avg_winrate": round(wr_sum / wr_n, 1) if wr_n else 0.0,
     }
 
 

@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.35",
+    "date": "2026-08-18",
+    "description": "Limpieza de archivos muertos (nt8_bridge.py TCP, bridge/Q7Bridge.cs + q7_config.json, legacy src/Q7Orchestrator y src/Q7Dashboard) y nueva tarjeta Avg Winrate en Stats de grupo (media de cuentas con trades)"
+  },
+  {
     "version": "v0.34",
     "date": "2026-08-18",
     "description": "Modulo de Estadisticas (Stats): recolecta equity cada 10s (stats_interval_s configurable) y cierres de ciclo con snapshot de preset, pagina Stats con KPIs/curva/PnL diario/desgloses/comparativa de presets (recharts), Max DD basado en cierres realizados, DD de equipo sobre cierres, fix rango 'Hoy'"
