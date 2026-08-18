@@ -46,3 +46,6 @@ install*.bat
 
 # MT5 compiled
 *.ex5
+
+# OpenCode (planes y config local)
+.opencode/

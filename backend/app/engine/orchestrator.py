@@ -5,6 +5,7 @@ import glob
 import json
 import logging
 import os
+import re
 import threading
 from datetime import date, datetime, time
 
@@ -714,47 +715,54 @@ class OrchestratorEngine:
 
         nt8_accounts = status.get("accounts", [])
 
+        # Guard: si el ultimo status NO es de hoy (NT8 apagado / finde),
+        # no re-derivar baselines, PNL ni estados desde datos rancios. Eso
+        # deshace el reset diario y deja PNL RONDA negativo. Solo se sincronizan balances.
+        m = re.search(r"status_(\d{8})", os.path.basename(files[0]))
+        is_today = bool(m and m.group(1) == datetime.now().strftime("%Y%m%d"))
+
         # Check cycles: TPC/SLC (per-cycle) using raw status data directly
-        for nt8 in nt8_accounts:
-            acc_name = nt8.get("name", "")
-            pos_list = nt8.get("positions", [])
-            if not pos_list:
-                # No positions → reset cycle tracking
-                self._cycle_start_realized.pop(acc_name, None)
-                continue
+        if is_today:
+            for nt8 in nt8_accounts:
+                acc_name = nt8.get("name", "")
+                pos_list = nt8.get("positions", [])
+                if not pos_list:
+                    # No positions → reset cycle tracking
+                    self._cycle_start_realized.pop(acc_name, None)
+                    continue
 
-            acc = db.query(Account).filter(Account.nt8_account == acc_name).first()
-            if not acc or acc.status not in ("PENDING", "TRADING"):
-                continue
+                acc = db.query(Account).filter(Account.nt8_account == acc_name).first()
+                if not acc or acc.status not in ("PENDING", "TRADING"):
+                    continue
 
-            db.refresh(acc)  # Live edits from dashboard
+                db.refresh(acc)  # Live edits from dashboard
 
-            realized = nt8.get("realized_pnl", 0)
-            unrealized = nt8.get("unrealized_pnl", 0)
+                realized = nt8.get("realized_pnl", 0)
+                unrealized = nt8.get("unrealized_pnl", 0)
 
-            # Track cycle start baseline
-            if acc_name not in self._cycle_start_realized or self._cycle_start_realized[acc_name] is None:
-                self._cycle_start_realized[acc_name] = realized
-                log.info(f"Cycle baseline for {acc_name}: realized={realized:.0f}")
+                # Track cycle start baseline
+                if acc_name not in self._cycle_start_realized or self._cycle_start_realized[acc_name] is None:
+                    self._cycle_start_realized[acc_name] = realized
+                    log.info(f"Cycle baseline for {acc_name}: realized={realized:.0f}")
 
-            cycle_pnl = (realized - self._cycle_start_realized[acc_name]) + unrealized
+                cycle_pnl = (realized - self._cycle_start_realized[acc_name]) + unrealized
 
-            # Skip if we recently sent a close for this account (status may be stale)
-            if datetime.now().timestamp() - self._last_close_time.get(acc_name, 0) < 10:
-                continue
+                # Skip if we recently sent a close for this account (status may be stale)
+                if datetime.now().timestamp() - self._last_close_time.get(acc_name, 0) < 10:
+                    continue
 
-            # TPC/SLC check
-            if cycle_pnl >= acc.tpc:
-                self._write_trade(acc_name, "", "", 0, 0, 0, close_all=True)
-                self._add_log(f"{acc_name}: CYCLE TP +${cycle_pnl:.0f} ≥ +${acc.tpc:.0f} → closed", category="CYCLE", account=acc_name)
-                self._cycle_start_realized.pop(acc_name, None)
-                break
+                # TPC/SLC check
+                if cycle_pnl >= acc.tpc:
+                    self._write_trade(acc_name, "", "", 0, 0, 0, close_all=True)
+                    self._add_log(f"{acc_name}: CYCLE TP +${cycle_pnl:.0f} ≥ +${acc.tpc:.0f} → closed", category="CYCLE", account=acc_name)
+                    self._cycle_start_realized.pop(acc_name, None)
+                    break
 
-            elif cycle_pnl <= -acc.slc:
-                self._write_trade(acc_name, "", "", 0, 0, 0, close_all=True)
-                self._add_log(f"{acc_name}: CYCLE SL -${abs(cycle_pnl):.0f} ≥ -${acc.slc:.0f} → closed", category="CYCLE", account=acc_name)
-                self._cycle_start_realized.pop(acc_name, None)
-                break
+                elif cycle_pnl <= -acc.slc:
+                    self._write_trade(acc_name, "", "", 0, 0, 0, close_all=True)
+                    self._add_log(f"{acc_name}: CYCLE SL -${abs(cycle_pnl):.0f} ≥ -${acc.slc:.0f} → closed", category="CYCLE", account=acc_name)
+                    self._cycle_start_realized.pop(acc_name, None)
+                    break
 
         if not nt8_accounts:
             db.commit()
@@ -771,6 +779,11 @@ class OrchestratorEngine:
             db.refresh(acc)  # Live edits from dashboard
 
             acc.balance = nt8.get("balance", acc.balance)
+
+            # Status rancio (no de hoy): solo balance, nada mas.
+            if not is_today:
+                continue
+
             unrealized = nt8.get("unrealized_pnl", 0)
             realized = nt8.get("realized_pnl", 0)
             acc.open_pnl = unrealized

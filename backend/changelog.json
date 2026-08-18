@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.33",
+    "date": "2026-08-18",
+    "description": "Fix reset diario: status rancio (no de hoy) ya no re-deriva baselines/PNL/estados, POS LONG/SHORT con color de fondo en dashboard, nuevo EA Q7_SignalGenerator (solo modo senales, sin riesgo/lotaje), gitignore .opencode"
+  },
+  {
     "version": "v0.32",
     "date": "2026-08-14",
     "description": "EA_TrendScaling: fix re-emision de senales al recargar/recompilar (persistencia de estado en archivo fuera de los globs del orchestrator, restauracion de ultima senal, cooldown 5s de arranque, warmup sin margen extra)"

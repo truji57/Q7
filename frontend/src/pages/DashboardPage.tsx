@@ -283,7 +283,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="text-[10px] text-zinc-600 truncate">{acc.nt8_account}</div>
                         </td>
-                        <td className={`py-2 px-2 text-center text-xs font-semibold ${acc.position === 'LONG' ? 'text-zinc-200' : acc.position === 'SHORT' ? 'text-red-400' : 'text-zinc-400'}`}>{acc.position}</td>
+                        <td className={`py-2 px-2 text-center text-xs font-semibold rounded ${acc.position === 'LONG' ? 'bg-blue-600/30 text-blue-200' : acc.position === 'SHORT' ? 'bg-orange-700/30 text-orange-300' : 'text-zinc-400'}`}>{acc.position}</td>
                         <td className="py-2 px-2 text-center text-zinc-500 text-xs">{acc.round_num || 0}</td>
                         <td className={`py-2 px-2 text-center ${!acc.starting_balance ? 'bg-red-500/10' : ''}`}>
                           <EditCell
