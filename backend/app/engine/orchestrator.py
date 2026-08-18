@@ -12,6 +12,7 @@ from datetime import date, datetime, time
 from app.database import SessionLocal
 from app.models.account import Account, Group, Config, ActivityLog, SymbolMap
 from app.services.account_service import AccountService
+from app.services.stats_service import StatsService
 
 log = logging.getLogger("Q7Backend.Orchestrator")
 
@@ -38,6 +39,9 @@ class OrchestratorEngine:
         self.last_mt5_hb: float = 0
         self._last_close_time: dict[str, float] = {}
         self._cycle_start_realized: dict[str, float] = {}
+        self._cycle_start_ts: dict[str, datetime] = {}
+        self._last_snapshot_ts: dict[str, float] = {}
+        self._stats_interval = self._get_stats_interval()
         self._lock = threading.Lock()
         self.ws_broadcast = None
 
@@ -65,6 +69,37 @@ class OrchestratorEngine:
             self._update_mt5_path()
             os.makedirs(self.mt5_signals_path, exist_ok=True)
             log.info(f"MT5 terminal changed to: {new_id}")
+
+    # ===== Stats / Metrica =====
+
+    def _get_stats_interval(self) -> float:
+        try:
+            return float(self._get_config("stats_interval_s") or 10)
+        except:
+            return 10.0
+
+    def reload_stats_config(self):
+        self._stats_interval = self._get_stats_interval()
+
+    def _record_close(self, db, account: Account, pnl: float, reason: str):
+        """Registra un cierre de ciclo (unit de 'trade') + snapshot del preset."""
+        try:
+            StatsService(db).record_close(
+                account, pnl, reason, ts_open=self._cycle_start_ts.get(account.nt8_account)
+            )
+        except Exception as e:
+            log.error(f"Stats record_close error: {e}")
+
+    def _snapshot_equity(self, db, account: Account):
+        """Muestrea equity de la cuenta con throttle configurable (stats_interval_s)."""
+        try:
+            now = datetime.now().timestamp()
+            if now - self._last_snapshot_ts.get(account.nt8_account, 0) < self._stats_interval:
+                return
+            self._last_snapshot_ts[account.nt8_account] = now
+            StatsService(db).snapshot(account)
+        except Exception as e:
+            log.error(f"Stats snapshot error: {e}")
 
     def reset_group_state(self, group_id: int):
         with self._lock:
@@ -727,8 +762,17 @@ class OrchestratorEngine:
                 acc_name = nt8.get("name", "")
                 pos_list = nt8.get("positions", [])
                 if not pos_list:
-                    # No positions → reset cycle tracking
-                    self._cycle_start_realized.pop(acc_name, None)
+                    # No positions → reset cycle tracking (registra cierre externo si lo habia)
+                    if acc_name in self._cycle_start_realized:
+                        if datetime.now().timestamp() - self._last_close_time.get(acc_name, 0) >= 10:
+                            acc = db.query(Account).filter(Account.nt8_account == acc_name).first()
+                            if acc and acc.status in ("PENDING", "TRADING"):
+                                base = self._cycle_start_realized.get(acc_name) or 0
+                                ext_pnl = nt8.get("realized_pnl", 0) - base
+                                self._record_close(db, acc, ext_pnl, "EXTERNAL")
+                                log.info(f"External close {acc_name}: pnl={ext_pnl:.0f}")
+                        self._cycle_start_realized.pop(acc_name, None)
+                        self._cycle_start_ts.pop(acc_name, None)
                     continue
 
                 acc = db.query(Account).filter(Account.nt8_account == acc_name).first()
@@ -743,6 +787,7 @@ class OrchestratorEngine:
                 # Track cycle start baseline
                 if acc_name not in self._cycle_start_realized or self._cycle_start_realized[acc_name] is None:
                     self._cycle_start_realized[acc_name] = realized
+                    self._cycle_start_ts[acc_name] = datetime.utcnow()
                     log.info(f"Cycle baseline for {acc_name}: realized={realized:.0f}")
 
                 cycle_pnl = (realized - self._cycle_start_realized[acc_name]) + unrealized
@@ -755,13 +800,17 @@ class OrchestratorEngine:
                 if cycle_pnl >= acc.tpc:
                     self._write_trade(acc_name, "", "", 0, 0, 0, close_all=True)
                     self._add_log(f"{acc_name}: CYCLE TP +${cycle_pnl:.0f} ≥ +${acc.tpc:.0f} → closed", category="CYCLE", account=acc_name)
+                    self._record_close(db, acc, cycle_pnl, "TPC")
                     self._cycle_start_realized.pop(acc_name, None)
+                    self._cycle_start_ts.pop(acc_name, None)
                     break
 
                 elif cycle_pnl <= -acc.slc:
                     self._write_trade(acc_name, "", "", 0, 0, 0, close_all=True)
                     self._add_log(f"{acc_name}: CYCLE SL -${abs(cycle_pnl):.0f} ≥ -${acc.slc:.0f} → closed", category="CYCLE", account=acc_name)
+                    self._record_close(db, acc, cycle_pnl, "SLC")
                     self._cycle_start_realized.pop(acc_name, None)
+                    self._cycle_start_ts.pop(acc_name, None)
                     break
 
         if not nt8_accounts:
@@ -810,6 +859,9 @@ class OrchestratorEngine:
             round_baseline = acc.round_start_realized or 0
             acc.round_pnl = round((realized - round_baseline) + unrealized, 2)
 
+            # Muestrear equity (throttle stats_interval_s)
+            self._snapshot_equity(db, acc)
+
             pos_list = nt8.get("positions", [])
             if pos_list:
                 p = pos_list[0]
@@ -837,6 +889,11 @@ class OrchestratorEngine:
                 if pos_list:
                     self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                     self._last_close_time[name] = datetime.now().timestamp()
+                    if name in self._cycle_start_realized:
+                        cpnl = (realized - self._cycle_start_realized[name]) + unrealized
+                        self._record_close(db, acc, cpnl, "TPG")
+                        self._cycle_start_realized.pop(name, None)
+                        self._cycle_start_ts.pop(name, None)
                 self._add_log(f"{name}: GLOBAL TP +${acc.total_pnl:.0f} ≥ +${acc.tpg:.0f} → disabled", category="GLOBAL", account=name)
                 log.info(f"TPG {name}: total={acc.total_pnl:.0f} >= {acc.tpg}")
 
@@ -847,6 +904,11 @@ class OrchestratorEngine:
                 if pos_list:
                     self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                     self._last_close_time[name] = datetime.now().timestamp()
+                    if name in self._cycle_start_realized:
+                        cpnl = (realized - self._cycle_start_realized[name]) + unrealized
+                        self._record_close(db, acc, cpnl, "SLG")
+                        self._cycle_start_realized.pop(name, None)
+                        self._cycle_start_ts.pop(name, None)
                 self._add_log(f"{name}: GLOBAL SL -${abs(acc.total_pnl):.0f} ≥ -${acc.slg:.0f} → disabled", category="GLOBAL", account=name)
                 log.info(f"SLG {name}: total={acc.total_pnl:.0f} <= -{acc.slg}")
 
@@ -855,6 +917,11 @@ class OrchestratorEngine:
                 self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                 self._last_close_time[name] = datetime.now().timestamp()
                 tag = "ROUND" if mode == "continuo" else "DAILY"
+                if name in self._cycle_start_realized:
+                    cpnl = (realized - self._cycle_start_realized[name]) + unrealized
+                    self._record_close(db, acc, cpnl, f"{tag}_TP")
+                    self._cycle_start_realized.pop(name, None)
+                    self._cycle_start_ts.pop(name, None)
                 self._add_log(f"{name}: {tag} TP +${check_pnl:.0f} ≥ +${acc.pdpt:.0f} → rotating", category="ROTATION", account=name)
                 log.info(f"TP {name}: {tag} pnl={check_pnl:.0f} >= {acc.pdpt}")
 
@@ -863,6 +930,11 @@ class OrchestratorEngine:
                 self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                 self._last_close_time[name] = datetime.now().timestamp()
                 tag = "ROUND" if mode == "continuo" else "DAILY"
+                if name in self._cycle_start_realized:
+                    cpnl = (realized - self._cycle_start_realized[name]) + unrealized
+                    self._record_close(db, acc, cpnl, f"{tag}_SL")
+                    self._cycle_start_realized.pop(name, None)
+                    self._cycle_start_ts.pop(name, None)
                 self._add_log(f"{name}: {tag} SL -${abs(check_pnl):.0f} ≥ -${acc.pdll:.0f} → rotating", category="ROTATION", account=name)
                 log.info(f"SL {name}: {tag} pnl={check_pnl:.0f} <= -{acc.pdll}")
 

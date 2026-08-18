@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.34",
+    "date": "2026-08-18",
+    "description": "Modulo de Estadisticas (Stats): recolecta equity cada 10s (stats_interval_s configurable) y cierres de ciclo con snapshot de preset, pagina Stats con KPIs/curva/PnL diario/desgloses/comparativa de presets (recharts), Max DD basado en cierres realizados, DD de equipo sobre cierres, fix rango 'Hoy'"
+  },
+  {
     "version": "v0.33",
     "date": "2026-08-18",
     "description": "Fix reset diario: status rancio (no de hoy) ya no re-deriva baselines/PNL/estados, POS LONG/SHORT con color de fondo en dashboard, nuevo EA Q7_SignalGenerator (solo modo senales, sin riesgo/lotaje), gitignore .opencode"

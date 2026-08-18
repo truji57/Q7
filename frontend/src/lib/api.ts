@@ -1,5 +1,12 @@
 const BASE = '/api';
 
+function qs(params: Record<string, string | number | undefined>): string {
+  const parts = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+  return parts.length ? `?${parts.join('&')}` : '';
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const hasBody = options?.body;
   const res = await fetch(`${BASE}${path}`, {
@@ -41,4 +48,12 @@ export const api = {
   checkUpdate: () => request<{local: string; remote: string; has_update: boolean}>('/check-update'),
   getActivity: (limit: number = 100) => request<any[]>(`/activity?limit=${limit}`),
   installAddon: () => request<any>('/config/install-addon', { method: 'POST' }),
+
+  // Stats
+  getStatsAccounts: (from?: string, to?: string) => request<any[]>(`/stats/accounts${qs({ from, to })}`),
+  getStatsAccount: (id: number, from?: string, to?: string) => request<any>(`/stats/accounts/${id}${qs({ from, to })}`),
+  getStatsEquity: (id: number, bucket: number = 300, from?: string, to?: string) =>
+    request<any>(`/stats/accounts/${id}/equity${qs({ bucket, from, to })}`),
+  getStatsGroup: (id: number, from?: string, to?: string) => request<any>(`/stats/groups/${id}${qs({ from, to })}`),
+  getStatsPresets: (from?: string, to?: string) => request<any[]>(`/stats/presets${qs({ from, to })}`),
 };

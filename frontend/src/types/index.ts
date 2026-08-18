@@ -78,3 +78,108 @@ export interface NT8Account {
   name: string;
   balance: number;
 }
+
+// ========== STATS ==========
+
+export interface StatsSummary {
+  n: number;
+  wins: number;
+  losses: number;
+  winrate: number;
+  net_pnl: number;
+  gross_win: number;
+  gross_loss: number;
+  avg_win: number;
+  avg_loss: number;
+  profit_factor: number;
+  expectancy: number;
+  max_dd: number;
+  max_dd_pct: number;
+  max_dd_date: string;
+}
+
+export interface AccountStatsRow extends StatsSummary {
+  account_id: number;
+  name: string;
+  nt8_account: string;
+  group_id: number;
+  group_name: string;
+  color: string;
+  balance: number;
+  total_pnl: number;
+  status: string;
+  enabled: boolean;
+}
+
+export interface EquityPoint {
+  ts: string;
+  balance: number;
+  equity: number;
+  drawdown: number;
+}
+
+export interface TradeCloseRecord {
+  id: number;
+  ts_open: string;
+  ts_close: string;
+  direction: string;
+  instrument: string;
+  pnl: number;
+  reason: string;
+  preset_key: string;
+}
+
+export interface BreakdownGroup {
+  key: string;
+  n: number;
+  wins: number;
+  winrate: number;
+  net_pnl: number;
+}
+
+export interface AccountStatsDetail extends StatsSummary {
+  account_id: number;
+  name: string;
+  nt8_account: string;
+  group_id: number;
+  color: string;
+  status: string;
+  balance: number;
+  total_pnl: number;
+  equity: EquityPoint[];
+  breakdowns: {
+    direction: BreakdownGroup[];
+    instrument: BreakdownGroup[];
+    reason: BreakdownGroup[];
+    weekday: BreakdownGroup[];
+    month: BreakdownGroup[];
+  };
+  trades: TradeCloseRecord[];
+}
+
+export interface PresetStats {
+  preset_key: string;
+  n: number;
+  wins: number;
+  winrate: number;
+  net_pnl: number;
+  avg: number;
+  profit_factor: number;
+  ct: number | null;
+  max_positions: number | null;
+  tpc: number | null;
+  slc: number | null;
+  pdpt: number | null;
+  pdll: number | null;
+  tpg: number | null;
+  slg: number | null;
+}
+
+export interface GroupStats {
+  group_id: number;
+  group_name: string;
+  accounts: AccountStatsRow[];
+  team_net_pnl: number;
+  team_trades: number;
+  team_max_dd: number;
+}

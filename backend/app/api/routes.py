@@ -1,11 +1,14 @@
 """
 Q7 Backend - API Routes (v2: Group-based)
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.services.account_service import AccountService
+from app.services.stats_service import StatsService
 from app.models.account import ActivityLog, SymbolMap
 from app.schemas.account import (
     GroupCreate, GroupUpdate, GroupSchema,
@@ -213,6 +216,7 @@ def get_config(db: Session = Depends(get_db)):
         "debug_mode": svc.get_config("debug_mode") or "false",
         "mt5_terminal_id": svc.get_config("mt5_terminal_id") or "D0E8209F77C8CF37AD8BF550E51FF075",
         "default_instrument": svc.get_config("default_instrument") or "MNQ 09-26",
+        "stats_interval_s": svc.get_config("stats_interval_s") or "10",
     }
 
 
@@ -226,6 +230,10 @@ def update_config(data: dict, db: Session = Depends(get_db)):
         orch = get_orch()
         if orch:
             orch.reload_mt5_config()
+    if "stats_interval_s" in data:
+        orch = get_orch()
+        if orch:
+            orch.reload_stats_config()
     return {"ok": True}
 
 
@@ -345,6 +353,124 @@ def check_update():
 
     has_update = remote and remote != local
     return {"local": local, "remote": remote, "has_update": has_update}
+
+
+# ========== STATS ==========
+
+@router.get("/stats/accounts")
+def stats_accounts(from_dt: datetime | None = Query(None, alias="from"),
+                   to_dt: datetime | None = Query(None, alias="to"),
+                   db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    st = StatsService(db)
+    rows = []
+    for g in svc.get_all_groups():
+        for a in g.accounts:
+            m = st.account_summary(a.id, from_dt, to_dt)
+            m.update({
+                "account_id": a.id,
+                "name": a.name,
+                "nt8_account": a.nt8_account,
+                "group_id": a.group_id,
+                "group_name": g.name,
+                "color": a.color,
+                "balance": round(a.balance or 0, 2),
+                "total_pnl": round(a.total_pnl or 0, 2),
+                "status": a.status,
+                "enabled": a.enabled,
+            })
+            rows.append(m)
+    return rows
+
+
+@router.get("/stats/accounts/{account_id}")
+def stats_account_detail(account_id: int,
+                         from_dt: datetime | None = Query(None, alias="from"),
+                         to_dt: datetime | None = Query(None, alias="to"),
+                         db: Session = Depends(get_db)):
+    from app.models.account import Account
+    a = db.query(Account).filter(Account.id == account_id).first()
+    if not a:
+        raise HTTPException(404, "Account not found")
+    st = StatsService(db)
+    m = st.account_summary(a.id, from_dt, to_dt)
+    m.update({
+        "account_id": a.id,
+        "name": a.name,
+        "nt8_account": a.nt8_account,
+        "group_id": a.group_id,
+        "color": a.color,
+        "status": a.status,
+        "balance": round(a.balance or 0, 2),
+        "total_pnl": round(a.total_pnl or 0, 2),
+        "equity": st.account_equity(a.id, from_dt, to_dt, bucket=300),
+        "breakdowns": st.account_breakdowns(a.id, from_dt, to_dt),
+        "trades": st.account_trades(a.id, from_dt, to_dt, limit=200),
+    })
+    return m
+
+
+@router.get("/stats/accounts/{account_id}/equity")
+def stats_account_equity(account_id: int,
+                         bucket: int = 300,
+                         from_dt: datetime | None = Query(None, alias="from"),
+                         to_dt: datetime | None = Query(None, alias="to"),
+                         db: Session = Depends(get_db)):
+    st = StatsService(db)
+    return {"points": st.account_equity(account_id, from_dt, to_dt, bucket=bucket)}
+
+
+@router.get("/stats/groups/{group_id}")
+def stats_group(group_id: int,
+                from_dt: datetime | None = Query(None, alias="from"),
+                to_dt: datetime | None = Query(None, alias="to"),
+                db: Session = Depends(get_db)):
+    from app.models.account import Group, Account, TradeClose
+    g = db.query(Group).filter(Group.id == group_id).first()
+    if not g:
+        raise HTTPException(404, "Group not found")
+    st = StatsService(db)
+    accounts = db.query(Account).filter(Account.group_id == group_id).all()
+    rows = []
+    team_net, team_trades = 0.0, 0
+    for a in accounts:
+        m = st.account_summary(a.id, from_dt, to_dt)
+        m.update({"account_id": a.id, "name": a.name, "color": a.color,
+                  "balance": round(a.balance or 0, 2), "total_pnl": round(a.total_pnl or 0, 2),
+                  "status": a.status, "enabled": a.enabled})
+        rows.append(m)
+        team_net += m["net_pnl"]
+        team_trades += m["n"]
+    rows.sort(key=lambda r: -abs(r["net_pnl"]))
+    # Max DD de equipo: curva de pnl acumulado combinando los CIERRES de todas
+    # las cuentas (ordenados por hora). Refleja la perdida realizada real.
+    closes = db.query(TradeClose).filter(TradeClose.group_id == group_id)
+    if from_dt: closes = closes.filter(TradeClose.ts_close >= from_dt)
+    if to_dt: closes = closes.filter(TradeClose.ts_close <= to_dt)
+    closes = closes.order_by(TradeClose.ts_close).all()
+    peak, team_max_dd = 0.0, 0.0
+    cum = 0.0
+    for c in closes:
+        cum += c.pnl or 0
+        if cum > peak:
+            peak = cum
+        team_max_dd = max(team_max_dd, peak - cum)
+    return {
+        "group_id": g.id,
+        "group_name": g.name,
+        "accounts": rows,
+        "team_net_pnl": round(team_net, 2),
+        "team_trades": team_trades,
+        "team_max_dd": round(team_max_dd, 2),
+    }
+
+
+@router.get("/stats/presets")
+def stats_presets(from_dt: datetime | None = Query(None, alias="from"),
+                  to_dt: datetime | None = Query(None, alias="to"),
+                  db: Session = Depends(get_db)):
+    st = StatsService(db)
+    return st.preset_summary(from_dt, to_dt)
 
 
 # ========== ACTIVITY LOG ==========

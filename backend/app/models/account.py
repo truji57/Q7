@@ -131,3 +131,51 @@ class ActivityLog(Base):
     message = Column(String(500))
     account = Column(String(100), nullable=True)
     group_id = Column(Integer, nullable=True)
+
+
+class EquitySnapshot(Base):
+    """Serie temporal balance/equity por cuenta (curva + drawdown)."""
+    __tablename__ = "equity_snapshots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    group_id = Column(Integer, nullable=True, index=True)
+    ts = Column(DateTime, default=datetime.utcnow, index=True)
+    balance = Column(Float, default=0.0)
+    equity = Column(Float, default=0.0)
+    daily_pnl = Column(Float, default=0.0)
+
+
+class TradeClose(Base):
+    """Cierre de ciclo (un 'trade'). Origen: limites TPC/SLC/PDPT/PDLL/TPG/SLG o cierre externo."""
+    __tablename__ = "trade_closes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    group_id = Column(Integer, nullable=True, index=True)
+    ts_open = Column(DateTime, nullable=True)
+    ts_close = Column(DateTime, default=datetime.utcnow, index=True)
+    direction = Column(String(10), default="?")
+    instrument = Column(String(50), default="--")
+    pnl = Column(Float, default=0.0)
+    reason = Column(String(20), default="")   # TPC, SLC, DAILY_TP, DAILY_SL, ROUND_TP, ROUND_SL, TPG, SLG, EXTERNAL
+    preset_key = Column(String(40), nullable=True, index=True)
+
+
+class ConfigSnapshot(Base):
+    """Captura del preset (TPC/SLC/TPR/SLR/TPG/SLG/CT/MXP) usado en cada cierre."""
+    __tablename__ = "config_snapshots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    group_id = Column(Integer, nullable=True)
+    ts = Column(DateTime, default=datetime.utcnow)
+    preset_key = Column(String(40), nullable=True, index=True)
+    ct = Column(Integer, default=1)
+    max_positions = Column(Integer, default=6)
+    tpc = Column(Float, default=1500.0)
+    slc = Column(Float, default=2000.0)
+    pdpt = Column(Float, default=1600.0)
+    pdll = Column(Float, default=2100.0)
+    tpg = Column(Float, default=0.0)
+    slg = Column(Float, default=0.0)
