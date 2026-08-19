@@ -431,6 +431,7 @@ export default function StatisticsPage() {
                 <th className="px-3 py-2 text-right font-medium">CT/MXP</th>
                 <th className="px-3 py-2 text-right font-medium">TPC/SLC</th>
                 <th className="px-3 py-2 text-right font-medium">TPR/SLR</th>
+                <th className="px-3 py-2 text-right font-medium">TPD/SLD</th>
                 <th className="px-3 py-2 text-right font-medium">TPG/SLG</th>
               </tr>
             </thead>
@@ -446,11 +447,12 @@ export default function StatisticsPage() {
                   <td className="px-3 py-1.5 text-right text-zinc-400">{p.ct ?? '—'}/{p.max_positions ?? '—'}</td>
                   <td className="px-3 py-1.5 text-right text-zinc-400">{p.tpc ?? '—'}/{p.slc ?? '—'}</td>
                   <td className="px-3 py-1.5 text-right text-zinc-400">{p.pdpt ?? '—'}/{p.pdll ?? '—'}</td>
+                  <td className="px-3 py-1.5 text-right text-zinc-400">{p.tpd ?? '—'}/{p.sld ?? '—'}</td>
                   <td className="px-3 py-1.5 text-right text-zinc-400">{p.tpg ?? '—'}/{p.slg ?? '—'}</td>
                 </tr>
               ))}
               {presets.length === 0 && (
-                <tr><td colSpan={10} className="px-3 py-3 text-center text-zinc-600">Aún no hay cierres registrados. Arrancan a acumularse al operar.</td></tr>
+                <tr><td colSpan={11} className="px-3 py-3 text-center text-zinc-600">Aún no hay cierres registrados. Arrancan a acumularse al operar.</td></tr>
               )}
             </tbody>
           </table>

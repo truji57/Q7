@@ -530,10 +530,14 @@ class OrchestratorEngine:
                     db.commit()
                     log.info(f"Group {group_id}: stopped (reset_mode=manual)")
                 elif mode == "continuo":
-                    # Reiniciar todas las cuentas a PENDING y volver a la primera
+                    # Reiniciar las cuentas HABILITADAS a PENDING y volver a la primera.
+                    # Las deshabilitadas (TPG/SLG/TPD/SLD/manual) se quedan como estan;
+                    # las pausadas diarias (TPD/SLD) las reactiva reset_daily() al dia siguiente.
                     svc = AccountService(db)
                     new_round = max((a.round_num or 0) for a in svc.get_accounts(group_id)) + 1
                     for a in svc.get_accounts(group_id):
+                        if not a.enabled:
+                            continue
                         a.status = "PENDING"
                         a.daily_pnl = 0.0
                         a.open_pnl = 0.0
@@ -790,29 +794,6 @@ class OrchestratorEngine:
                     self._cycle_start_ts[acc_name] = datetime.utcnow()
                     log.info(f"Cycle baseline for {acc_name}: realized={realized:.0f}")
 
-                cycle_pnl = (realized - self._cycle_start_realized[acc_name]) + unrealized
-
-                # Skip if we recently sent a close for this account (status may be stale)
-                if datetime.now().timestamp() - self._last_close_time.get(acc_name, 0) < 10:
-                    continue
-
-                # TPC/SLC check
-                if cycle_pnl >= acc.tpc:
-                    self._write_trade(acc_name, "", "", 0, 0, 0, close_all=True)
-                    self._add_log(f"{acc_name}: CYCLE TP +${cycle_pnl:.0f} ≥ +${acc.tpc:.0f} → closed", category="CYCLE", account=acc_name)
-                    self._record_close(db, acc, cycle_pnl, "TPC")
-                    self._cycle_start_realized.pop(acc_name, None)
-                    self._cycle_start_ts.pop(acc_name, None)
-                    break
-
-                elif cycle_pnl <= -acc.slc:
-                    self._write_trade(acc_name, "", "", 0, 0, 0, close_all=True)
-                    self._add_log(f"{acc_name}: CYCLE SL -${abs(cycle_pnl):.0f} ≥ -${acc.slc:.0f} → closed", category="CYCLE", account=acc_name)
-                    self._record_close(db, acc, cycle_pnl, "SLC")
-                    self._cycle_start_realized.pop(acc_name, None)
-                    self._cycle_start_ts.pop(acc_name, None)
-                    break
-
         if not nt8_accounts:
             db.commit()
             return
@@ -871,75 +852,110 @@ class OrchestratorEngine:
                 acc.position = "FLAT"
                 acc.symbol = "--"
 
-            # Determinar que PNL usar para PDLL/PDPT segun modo del grupo
-            group = db.query(Group).filter(Group.id == acc.group_id).first()
-            mode = group.reset_mode if group else "diario"
-            # Continuo y Manual → PNL Ronda; Diario → PNL Dia
-            check_pnl = acc.round_pnl if mode in ("continuo", "manual") else acc.daily_pnl
-
-            # Skip daily check if close was recently sent
+            # Skip if close was recently sent (status may be stale)
             if datetime.now().timestamp() - self._last_close_time.get(name, 0) < 10:
                 continue
 
-            # TPG / SLG — Global (prioridad maxima, aplica incluso si ya toco ronda)
+            # Cycle PnL para TPC/SLC (prioridad minima)
+            cycle_pnl = None
+            if pos_list:
+                base = self._cycle_start_realized.get(name)
+                if base is not None:
+                    cycle_pnl = (realized - base) + unrealized
+
+            # Prioridad: TPG/SLG -> TPD/SLD -> TPR/SLR -> TPC/SLC
             if acc.tpg and acc.tpg > 0 and acc.total_pnl >= acc.tpg and acc.status in ("PENDING", "TRADING", "TP_RONDA", "SL_RONDA"):
-                was_enabled = acc.enabled
                 acc.status = "TP_GLOBAL"
                 acc.enabled = False
                 if pos_list:
                     self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                     self._last_close_time[name] = datetime.now().timestamp()
-                    if name in self._cycle_start_realized:
-                        cpnl = (realized - self._cycle_start_realized[name]) + unrealized
-                        self._record_close(db, acc, cpnl, "TPG")
+                    if cycle_pnl is not None:
+                        self._record_close(db, acc, cycle_pnl, "TPG")
                         self._cycle_start_realized.pop(name, None)
                         self._cycle_start_ts.pop(name, None)
                 self._add_log(f"{name}: GLOBAL TP +${acc.total_pnl:.0f} ≥ +${acc.tpg:.0f} → disabled", category="GLOBAL", account=name)
                 log.info(f"TPG {name}: total={acc.total_pnl:.0f} >= {acc.tpg}")
 
             elif acc.slg and acc.slg > 0 and acc.total_pnl <= -acc.slg and acc.status in ("PENDING", "TRADING", "TP_RONDA", "SL_RONDA"):
-                was_enabled = acc.enabled
                 acc.status = "SL_GLOBAL"
                 acc.enabled = False
                 if pos_list:
                     self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                     self._last_close_time[name] = datetime.now().timestamp()
-                    if name in self._cycle_start_realized:
-                        cpnl = (realized - self._cycle_start_realized[name]) + unrealized
-                        self._record_close(db, acc, cpnl, "SLG")
+                    if cycle_pnl is not None:
+                        self._record_close(db, acc, cycle_pnl, "SLG")
                         self._cycle_start_realized.pop(name, None)
                         self._cycle_start_ts.pop(name, None)
                 self._add_log(f"{name}: GLOBAL SL -${abs(acc.total_pnl):.0f} ≥ -${acc.slg:.0f} → disabled", category="GLOBAL", account=name)
                 log.info(f"SLG {name}: total={acc.total_pnl:.0f} <= -{acc.slg}")
 
-            if check_pnl >= acc.pdpt and acc.status in ("PENDING", "TRADING"):
+            elif acc.tpd and acc.tpd > 0 and acc.daily_pnl >= acc.tpd and acc.status in ("PENDING", "TRADING"):
+                acc.status = "TP_DIA"
+                acc.enabled = False
+                if pos_list:
+                    self._write_trade(name, "", "", 0, 0, 0, close_all=True)
+                    self._last_close_time[name] = datetime.now().timestamp()
+                    if cycle_pnl is not None:
+                        self._record_close(db, acc, cycle_pnl, "DAILY_TP")
+                        self._cycle_start_realized.pop(name, None)
+                        self._cycle_start_ts.pop(name, None)
+                self._add_log(f"{name}: DAILY TP +${acc.daily_pnl:.0f} ≥ +${acc.tpd:.0f} → pausada hoy", category="ROTATION", account=name)
+                log.info(f"TPD {name}: daily={acc.daily_pnl:.0f} >= {acc.tpd}")
+
+            elif acc.sld and acc.sld > 0 and acc.daily_pnl <= -acc.sld and acc.status in ("PENDING", "TRADING"):
+                acc.status = "SL_DIA"
+                acc.enabled = False
+                if pos_list:
+                    self._write_trade(name, "", "", 0, 0, 0, close_all=True)
+                    self._last_close_time[name] = datetime.now().timestamp()
+                    if cycle_pnl is not None:
+                        self._record_close(db, acc, cycle_pnl, "DAILY_SL")
+                        self._cycle_start_realized.pop(name, None)
+                        self._cycle_start_ts.pop(name, None)
+                self._add_log(f"{name}: DAILY SL -${abs(acc.daily_pnl):.0f} ≥ -${acc.sld:.0f} → pausada hoy", category="ROTATION", account=name)
+                log.info(f"SLD {name}: daily={acc.daily_pnl:.0f} <= -{acc.sld}")
+
+            elif acc.pdpt and acc.pdpt > 0 and acc.round_pnl >= acc.pdpt and acc.status in ("PENDING", "TRADING"):
                 acc.status = "TP_RONDA"
                 self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                 self._last_close_time[name] = datetime.now().timestamp()
-                tag = "ROUND" if mode == "continuo" else "DAILY"
-                if name in self._cycle_start_realized:
-                    cpnl = (realized - self._cycle_start_realized[name]) + unrealized
-                    self._record_close(db, acc, cpnl, f"{tag}_TP")
+                if cycle_pnl is not None:
+                    self._record_close(db, acc, cycle_pnl, "ROUND_TP")
                     self._cycle_start_realized.pop(name, None)
                     self._cycle_start_ts.pop(name, None)
-                self._add_log(f"{name}: {tag} TP +${check_pnl:.0f} ≥ +${acc.pdpt:.0f} → rotating", category="ROTATION", account=name)
-                log.info(f"TP {name}: {tag} pnl={check_pnl:.0f} >= {acc.pdpt}")
+                self._add_log(f"{name}: ROUND TP +${acc.round_pnl:.0f} ≥ +${acc.pdpt:.0f} → rotating", category="ROTATION", account=name)
+                log.info(f"TPR {name}: round={acc.round_pnl:.0f} >= {acc.pdpt}")
 
-            elif check_pnl <= -acc.pdll and acc.status in ("PENDING", "TRADING"):
+            elif acc.pdll and acc.pdll > 0 and acc.round_pnl <= -acc.pdll and acc.status in ("PENDING", "TRADING"):
                 acc.status = "SL_RONDA"
                 self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                 self._last_close_time[name] = datetime.now().timestamp()
-                tag = "ROUND" if mode == "continuo" else "DAILY"
-                if name in self._cycle_start_realized:
-                    cpnl = (realized - self._cycle_start_realized[name]) + unrealized
-                    self._record_close(db, acc, cpnl, f"{tag}_SL")
+                if cycle_pnl is not None:
+                    self._record_close(db, acc, cycle_pnl, "ROUND_SL")
                     self._cycle_start_realized.pop(name, None)
                     self._cycle_start_ts.pop(name, None)
-                self._add_log(f"{name}: {tag} SL -${abs(check_pnl):.0f} ≥ -${acc.pdll:.0f} → rotating", category="ROTATION", account=name)
-                log.info(f"SL {name}: {tag} pnl={check_pnl:.0f} <= -{acc.pdll}")
+                self._add_log(f"{name}: ROUND SL -${abs(acc.round_pnl):.0f} ≥ -${acc.pdll:.0f} → rotating", category="ROTATION", account=name)
+                log.info(f"SLR {name}: round={acc.round_pnl:.0f} <= -{acc.pdll}")
+
+            elif cycle_pnl is not None and cycle_pnl >= acc.tpc:
+                self._write_trade(name, "", "", 0, 0, 0, close_all=True)
+                self._last_close_time[name] = datetime.now().timestamp()
+                self._record_close(db, acc, cycle_pnl, "TPC")
+                self._cycle_start_realized.pop(name, None)
+                self._cycle_start_ts.pop(name, None)
+                self._add_log(f"{name}: CYCLE TP +${cycle_pnl:.0f} ≥ +${acc.tpc:.0f} → closed", category="CYCLE", account=name)
+
+            elif cycle_pnl is not None and cycle_pnl <= -acc.slc:
+                self._write_trade(name, "", "", 0, 0, 0, close_all=True)
+                self._last_close_time[name] = datetime.now().timestamp()
+                self._record_close(db, acc, cycle_pnl, "SLC")
+                self._cycle_start_realized.pop(name, None)
+                self._cycle_start_ts.pop(name, None)
+                self._add_log(f"{name}: CYCLE SL -${abs(cycle_pnl):.0f} ≥ -${acc.slc:.0f} → closed", category="CYCLE", account=name)
 
             # If account was TP/SL and position is now closed, rotate
-            if not pos_list and acc.status in ("TP_RONDA", "SL_RONDA", "TP_GLOBAL", "SL_GLOBAL", "TP_TOUCHED", "SL_TOUCHED"):
+            if not pos_list and acc.status in ("TP_RONDA", "SL_RONDA", "TP_DIA", "SL_DIA", "TP_GLOBAL", "SL_GLOBAL", "TP_TOUCHED", "SL_TOUCHED"):
                 # Migrar status antiguo al nuevo
                 if acc.status == "TP_TOUCHED": acc.status = "TP_RONDA"
                 if acc.status == "SL_TOUCHED": acc.status = "SL_RONDA"
@@ -948,7 +964,7 @@ class OrchestratorEngine:
                     # Reconstruir state tras reinicio del backend
                     # Buscar TRADING o, si no hay, la ultima cuenta que acabo de tocar
                     active = next((a for a in db.query(Account).filter(
-                        Account.group_id == acc.group_id, Account.status.in_(["TRADING", "TP_RONDA", "SL_RONDA", "TP_GLOBAL", "SL_GLOBAL"])
+                        Account.group_id == acc.group_id, Account.status.in_(["TRADING", "TP_RONDA", "SL_RONDA", "TP_DIA", "SL_DIA", "TP_GLOBAL", "SL_GLOBAL"])
                     ).order_by(Account.order_index).all()), None)
                     if active:
                         state = {"active_account_id": active.id, "processed": []}

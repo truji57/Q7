@@ -51,10 +51,15 @@ class AccountService:
         g = self.db.query(Group).filter(Group.id == group_id).first()
         if not g: return None
 
+        # Si el nombre llega vacio, usar el nombre de la cuenta NT8
+        if not (data.get("name") or "").strip():
+            data["name"] = (data.get("nt8_account") or "").strip() or "?"
+
         defaults = {
             "ct": g.default_ct, "max_positions": g.default_max_positions,
             "tpc": g.default_tpc, "slc": g.default_slc,
             "pdll": g.default_pdll, "pdpt": g.default_pdpt,
+            "tpd": g.default_tpd or 0, "sld": g.default_sld or 0,
         }
         for k, v in defaults.items():
             if k not in data or data[k] is None:
@@ -88,6 +93,10 @@ class AccountService:
         today = date.today()
         accounts = self.db.query(Account).filter(Account.last_reset != today).all()
         for a in accounts:
+            # Pausa diaria (TPD/SLD): al nuevo dia el PNL DIA vuelve a 0 -> reactivar.
+            # No reactiva desactivaciones manuales ni TPG/SLG (esos no tienen status TP_DIA/SL_DIA).
+            if a.status in ("TP_DIA", "SL_DIA"):
+                a.enabled = True
             a.status = "PENDING"
             a.daily_pnl = 0.0
             a.open_pnl = 0.0
@@ -127,6 +136,8 @@ class AccountService:
             "default_slc": g.default_slc,
             "default_pdll": g.default_pdll,
             "default_pdpt": g.default_pdpt,
+            "default_tpd": g.default_tpd or 0,
+            "default_sld": g.default_sld or 0,
             "default_tpg": g.default_tpg or 0,
             "default_slg": g.default_slg or 0,
             "accounts": [self.to_account_dict(a) for a in g.accounts],
@@ -145,6 +156,8 @@ class AccountService:
             "max_positions": a.max_positions,
             "pdll": a.pdll,
             "pdpt": a.pdpt,
+            "tpd": a.tpd or 0,
+            "sld": a.sld or 0,
             "tpg": a.tpg or 0,
             "slg": a.slg or 0,
             "tpc": a.tpc,

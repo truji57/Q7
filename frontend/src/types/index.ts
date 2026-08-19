@@ -10,6 +10,8 @@ export interface Account {
   max_positions: number;
   pdll: number;
   pdpt: number;
+  tpd: number;
+  sld: number;
   tpg: number;
   slg: number;
   tpc: number;
@@ -47,6 +49,8 @@ export interface Group {
   default_slc: number;
   default_pdll: number;
   default_pdpt: number;
+  default_tpd: number;
+  default_sld: number;
   default_tpg: number;
   default_slg: number;
   accounts: Account[];
@@ -171,6 +175,8 @@ export interface PresetStats {
   slc: number | null;
   pdpt: number | null;
   pdll: number | null;
+  tpd: number | null;
+  sld: number | null;
   tpg: number | null;
   slg: number | null;
 }

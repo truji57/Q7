@@ -92,6 +92,8 @@ def _run_migrations():
             "last_realized": "ALTER TABLE accounts ADD COLUMN last_realized FLOAT DEFAULT 0.0",
             "round_pnl": "ALTER TABLE accounts ADD COLUMN round_pnl FLOAT DEFAULT 0.0",
             "round_num": "ALTER TABLE accounts ADD COLUMN round_num INTEGER DEFAULT 0",
+            "tpd": "ALTER TABLE accounts ADD COLUMN tpd FLOAT DEFAULT 0.0",
+            "sld": "ALTER TABLE accounts ADD COLUMN sld FLOAT DEFAULT 0.0",
             "tpg": "ALTER TABLE accounts ADD COLUMN tpg FLOAT DEFAULT 0.0",
             "slg": "ALTER TABLE accounts ADD COLUMN slg FLOAT DEFAULT 0.0",
             "total_pnl": "ALTER TABLE accounts ADD COLUMN total_pnl FLOAT DEFAULT 0.0",
@@ -127,6 +129,8 @@ def _run_migrations():
             "default_slc": "ALTER TABLE groups ADD COLUMN default_slc FLOAT DEFAULT 2000.0",
             "default_max_positions": "ALTER TABLE groups ADD COLUMN default_max_positions INTEGER DEFAULT 6",
             "reset_mode": "ALTER TABLE groups ADD COLUMN reset_mode TEXT DEFAULT 'diario'",
+            "default_tpd": "ALTER TABLE groups ADD COLUMN default_tpd FLOAT DEFAULT 0.0",
+            "default_sld": "ALTER TABLE groups ADD COLUMN default_sld FLOAT DEFAULT 0.0",
             "default_tpg": "ALTER TABLE groups ADD COLUMN default_tpg FLOAT DEFAULT 0.0",
             "default_slg": "ALTER TABLE groups ADD COLUMN default_slg FLOAT DEFAULT 0.0",
         }
@@ -158,6 +162,20 @@ def _run_migrations():
                 ))
             except:
                 pass
+
+    # Migrations for config_snapshots table
+    if "config_snapshots" in inspector.get_table_names():
+        cols = [c["name"] for c in inspector.get_columns("config_snapshots")]
+        snap_migrations = {
+            "tpd": "ALTER TABLE config_snapshots ADD COLUMN tpd FLOAT DEFAULT 0.0",
+            "sld": "ALTER TABLE config_snapshots ADD COLUMN sld FLOAT DEFAULT 0.0",
+        }
+        for col, sql in snap_migrations.items():
+            if col not in cols:
+                try:
+                    conn.execute(text(sql))
+                except:
+                    pass
 
     conn.commit()
     conn.close()

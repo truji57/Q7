@@ -6,9 +6,11 @@ import { Pencil, Trash2, TestTube2, ChevronDown, ChevronRight, AlertTriangle } f
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'text-zinc-500',
-  TRADING: 'text-zinc-200',
+  TRADING: 'text-blue-400',
   TP_RONDA: 'text-green-400',
   SL_RONDA: 'text-red-400',
+  TP_DIA: 'text-green-400',
+  SL_DIA: 'text-red-400',
   TP_TOUCHED: 'text-green-400',
   SL_TOUCHED: 'text-red-400',
   TP_GLOBAL: 'text-emerald-300',
@@ -248,7 +250,7 @@ export default function DashboardPage() {
                   <thead>
                     <tr className="text-zinc-500 border-b border-[#1a1a2a]">
                       <th className="text-left py-2 px-2 font-medium w-[70px]" title="Estado de la cuenta">ESTADO</th>
-                      <th className="text-left py-2 px-2 font-medium w-[200px]" title="Nombre y cuenta NT8">CUENTA</th>
+                      <th className="text-left py-2 px-2 font-medium w-[120px]" title="Nombre y cuenta NT8">CUENTA</th>
                       <th className="text-center py-2 px-2 font-medium w-[55px]" title="Posicion actual (LONG/SHORT/FLAT)">POS</th>
                       <th className="text-center py-2 px-2 font-medium w-[45px]" title="Numero de ronda actual">RND</th>
                       <th className="text-center py-2 px-2 font-medium w-[80px]" title="Capital inicial de la cuenta">INI</th>
@@ -263,6 +265,8 @@ export default function DashboardPage() {
                       <th className="text-center py-2 px-2 font-medium w-[80px]" title="Stop Loss por ciclo">SLC</th>
                       <th className="text-center py-2 px-2 font-medium w-[80px]" title="Take Profit por ronda">TPR</th>
                       <th className="text-center py-2 px-2 font-medium w-[80px]" title="Stop Loss por ronda">SLR</th>
+                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Take Profit diario (pausa la cuenta el resto del dia)">TPD</th>
+                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Stop Loss diario (pausa la cuenta el resto del dia)">SLD</th>
                       <th className="text-center py-2 px-2 font-medium w-[65px]" title="Take Profit Global (desactiva cuenta)">TPG</th>
                       <th className="text-center py-2 px-2 font-medium w-[65px]" title="Stop Loss Global (desactiva cuenta)">SLG</th>
                       <th className="text-center py-2 px-2 font-medium" title="Cuenta habilitada">ON</th>
@@ -273,7 +277,7 @@ export default function DashboardPage() {
                       <tr key={acc.id} className={`border-b border-[#111122] hover:bg-[#111122]/50 ${!acc.enabled ? 'opacity-40' : ''}`}>
                         <td className="py-2 px-2">
                           <span className={`text-[10px] font-semibold ${STATUS_COLORS[acc.status] || 'text-zinc-500'}`}>
-                            {acc.status === 'TP_RONDA' ? 'TPR ✓' : acc.status === 'SL_RONDA' ? 'SLR ✗' : acc.status === 'TP_GLOBAL' ? 'TPG ✓' : acc.status === 'SL_GLOBAL' ? 'SLG ✗' : acc.status === 'TRADING' ? 'ACTIVE' : acc.status}
+                            {acc.status === 'TP_RONDA' ? 'TPR ✓' : acc.status === 'SL_RONDA' ? 'SLR ✗' : acc.status === 'TP_DIA' ? 'TPD ⏸' : acc.status === 'SL_DIA' ? 'SLD ⏸' : acc.status === 'TP_GLOBAL' ? 'TPG ✓' : acc.status === 'SL_GLOBAL' ? 'SLG ✗' : acc.status === 'TRADING' ? 'ACTIVE' : acc.status}
                           </span>
                         </td>
                         <td className="py-2 px-2">
@@ -313,6 +317,8 @@ export default function DashboardPage() {
                         <td className="py-2 px-2 text-center"><EditCell value={acc.slc} onSave={(v) => updateAccountField(acc.id, 'slc', v)} /></td>
                         <td className="py-2 px-2 text-center"><EditCell value={acc.pdpt} onSave={(v) => updateAccountField(acc.id, 'pdpt', v)} /></td>
                         <td className="py-2 px-2 text-center"><EditCell value={acc.pdll} onSave={(v) => updateAccountField(acc.id, 'pdll', v)} /></td>
+                        <td className="py-2 px-2 text-center"><EditCell value={acc.tpd || 0} onSave={(v) => updateAccountField(acc.id, 'tpd', v)} /></td>
+                        <td className="py-2 px-2 text-center"><EditCell value={acc.sld || 0} onSave={(v) => updateAccountField(acc.id, 'sld', v)} /></td>
                         <td className="py-2 px-2 text-center"><EditCell value={acc.tpg || 0} onSave={(v) => updateAccountField(acc.id, 'tpg', v)} /></td>
                         <td className="py-2 px-2 text-center"><EditCell value={acc.slg || 0} onSave={(v) => updateAccountField(acc.id, 'slg', v)} /></td>
                         <td className="py-2 px-2 text-center">
@@ -362,7 +368,7 @@ export default function DashboardPage() {
               <li>Evalua TPG/SLG y <span className="text-red-400">deshabilita</span> cuentas que los hayan alcanzado</li>
               <li>Reinicia el orden de cuentas empezando por la primera</li>
               <li><span className="text-amber-400">Resetea:</span> PNL RONDA, OPEN, ronda, posicion, trades</li>
-              <li><span className="text-green-400">No toca:</span> INI, BALANCE, PNL TOTAL, PNL DIA, CT, MXP, TPC, SLC, TPR, SLR, TPG, SLG</li>
+              <li><span className="text-green-400">No toca:</span> INI, BALANCE, PNL TOTAL, PNL DIA, CT, MXP, TPC, SLC, TPR, SLR, TPD, SLD, TPG, SLG</li>
             </ul>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setConfirmReset(null)} className="px-4 py-2 text-xs text-zinc-400 bg-zinc-700/20 border border-zinc-600/30 rounded hover:bg-zinc-700/40">Cancelar</button>

@@ -23,6 +23,8 @@ def make_preset_key(account) -> str:
         "slc": round(float(getattr(account, "slc", 2000.0) or 0), 2),
         "pdpt": round(float(getattr(account, "pdpt", 1600.0) or 0), 2),
         "pdll": round(float(getattr(account, "pdll", 2100.0) or 0), 2),
+        "tpd": round(float(getattr(account, "tpd", 0.0) or 0), 2),
+        "sld": round(float(getattr(account, "sld", 0.0) or 0), 2),
         "tpg": round(float(getattr(account, "tpg", 0.0) or 0), 2),
         "slg": round(float(getattr(account, "slg", 0.0) or 0), 2),
     }, sort_keys=True)
@@ -56,6 +58,7 @@ class StatsService:
             ct=account.ct or 1, max_positions=account.max_positions or 6,
             tpc=account.tpc or 0, slc=account.slc or 0,
             pdpt=account.pdpt or 0, pdll=account.pdll or 0,
+            tpd=account.tpd or 0, sld=account.sld or 0,
             tpg=account.tpg or 0, slg=account.slg or 0,
         ))
         self.db.commit()
@@ -260,6 +263,8 @@ class StatsService:
                 "slc": snap.slc if snap else None,
                 "pdpt": snap.pdpt if snap else None,
                 "pdll": snap.pdll if snap else None,
+                "tpd": snap.tpd if snap else None,
+                "sld": snap.sld if snap else None,
                 "tpg": snap.tpg if snap else None,
                 "slg": snap.slg if snap else None,
             })

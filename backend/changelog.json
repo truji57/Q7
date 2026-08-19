@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.36",
+    "date": "2026-08-19",
+    "description": "TPD/SLD (TP/SL diario): nuevos limites sobre PNL DIA que pausan la cuenta el resto del dia (estados TP_DIA/SL_DIA, reactivacion en reset diario), TPR/SLR siempre sobre PNL RONDA, prioridad TPG/SLG->TPD/SLD->TPR/SLR->TPC/SLC, edicion inline de nombre de cuenta y modal estilo app en Groups"
+  },
+  {
     "version": "v0.35",
     "date": "2026-08-18",
     "description": "Limpieza de archivos muertos (nt8_bridge.py TCP, bridge/Q7Bridge.cs + q7_config.json, legacy src/Q7Orchestrator y src/Q7Dashboard) y nueva tarjeta Avg Winrate en Stats de grupo (media de cuentas con trades)"

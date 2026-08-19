@@ -18,6 +18,8 @@ class AccountSchema(BaseModel):
     max_positions: int = 6
     pdll: float
     pdpt: float
+    tpd: float = 0.0
+    sld: float = 0.0
     tpg: float = 0.0
     slg: float = 0.0
     tpc: float
@@ -45,6 +47,8 @@ class AccountCreate(BaseModel):
     max_positions: Optional[int] = None
     pdll: Optional[float] = None
     pdpt: Optional[float] = None
+    tpd: Optional[float] = None
+    sld: Optional[float] = None
     tpg: Optional[float] = None
     slg: Optional[float] = None
     tpc: Optional[float] = None
@@ -60,6 +64,8 @@ class AccountUpdate(BaseModel):
     max_positions: Optional[int] = None
     pdll: Optional[float] = None
     pdpt: Optional[float] = None
+    tpd: Optional[float] = None
+    sld: Optional[float] = None
     tpg: Optional[float] = None
     slg: Optional[float] = None
     tpc: Optional[float] = None
@@ -90,6 +96,8 @@ class GroupSchema(BaseModel):
     default_slc: float
     default_pdll: float
     default_pdpt: float
+    default_tpd: float = 0.0
+    default_sld: float = 0.0
     default_tpg: float = 0.0
     default_slg: float = 0.0
     accounts: List[AccountSchema] = []
@@ -125,6 +133,8 @@ class GroupUpdate(BaseModel):
     default_slc: Optional[float] = None
     default_pdll: Optional[float] = None
     default_pdpt: Optional[float] = None
+    default_tpd: Optional[float] = None
+    default_sld: Optional[float] = None
     default_tpg: Optional[float] = None
     default_slg: Optional[float] = None
 

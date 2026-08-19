@@ -33,6 +33,8 @@ class Group(Base):
     default_slc = Column(Float, default=2000.0)
     default_pdll = Column(Float, default=2100.0)
     default_pdpt = Column(Float, default=1600.0)
+    default_tpd = Column(Float, default=0.0)
+    default_sld = Column(Float, default=0.0)
     default_tpg = Column(Float, default=0.0)
     default_slg = Column(Float, default=0.0)
 
@@ -57,6 +59,8 @@ class Account(Base):
     max_positions = Column(Integer, default=6)  # Max posiciones por ciclo
     pdll = Column(Float, default=2100.0)  # Perdida Diaria Limite → rotar cuenta
     pdpt = Column(Float, default=1600.0)  # Profit Diario Target → rotar cuenta
+    tpd = Column(Float, default=0.0)  # TP Diario (pausa cuenta el resto del dia)
+    sld = Column(Float, default=0.0)  # SL Diario (pausa cuenta el resto del dia)
     tpg = Column(Float, default=0.0)  # TP Global (0=sin limite)
     slg = Column(Float, default=0.0)  # SL Global (0=sin limite)
     tpc = Column(Float, default=1500.0)   # TP por ciclo
@@ -177,5 +181,7 @@ class ConfigSnapshot(Base):
     slc = Column(Float, default=2000.0)
     pdpt = Column(Float, default=1600.0)
     pdll = Column(Float, default=2100.0)
+    tpd = Column(Float, default=0.0)
+    sld = Column(Float, default=0.0)
     tpg = Column(Float, default=0.0)
     slg = Column(Float, default=0.0)
