@@ -40,6 +40,7 @@ class OrchestratorEngine:
         self._last_close_time: dict[str, float] = {}
         self._cycle_start_realized: dict[str, float] = {}
         self._cycle_start_ts: dict[str, datetime] = {}
+        self._cycle_adds: dict[str, int] = {}
         self._last_snapshot_ts: dict[str, float] = {}
         self._stats_interval = self._get_stats_interval()
         self._lock = threading.Lock()
@@ -250,6 +251,28 @@ class OrchestratorEngine:
         except:
             return False
 
+    def _account_open_units(self, nt8_account: str, ct: int) -> int:
+        """Numero de posiciones abiertas (en unidades de CT) segun el status LIVE del AddOn.
+        Suma la cantidad total y la divide entre CT -> robusto ante el merge de posiciones de NT8."""
+        try:
+            files = sorted(glob.glob(os.path.join(self.status_path, "status_*.json")), reverse=True)
+            if not files:
+                return 0
+            with open(files[0], "r", encoding="utf-8") as f:
+                status = json.load(f)
+            for nt8 in status.get("accounts", []):
+                if nt8.get("name", "") == nt8_account:
+                    total_qty = 0.0
+                    for p in (nt8.get("positions") or []):
+                        try:
+                            total_qty += float(p.get("quantity") or 0)
+                        except:
+                            pass
+                    return int(round(total_qty / max(1, ct or 1)))
+            return 0
+        except:
+            return 0
+
     def _handle_entry(self, signal: dict):
         """OPEN_LONG / OPEN_SHORT (back-compat: CYCLE_START / ADD_POSITION).
 
@@ -388,7 +411,21 @@ class OrchestratorEngine:
 
         instrument = self._resolve_instrument(signal_instrument)
         ct = max(1, account.ct)
+
+        # Limite de posiciones por ciclo (MXP): no sumar si ya se alcanzo.
+        mxp = max(1, account.max_positions or 1)
+        open_units = max(
+            self._cycle_adds.get(account.nt8_account, 0),
+            self._account_open_units(account.nt8_account, ct),
+        )
+        if open_units >= mxp:
+            log.info(f"{direction_str} ignorado: {account.nt8_account} ya tiene {open_units} posiciones (MXP={mxp})")
+            self._add_log(f"{account.nt8_account}: MXP alcanzado ({open_units}/{mxp}), suma ignorada",
+                          category="CYCLE", account=account.nt8_account)
+            return
+
         self._write_trade(account.nt8_account, "ENTER_" + direction_str, instrument, ct, 0, 0)
+        self._cycle_adds[account.nt8_account] = self._cycle_adds.get(account.nt8_account, 0) + 1
 
         log.info(f"{direction_str}: {ct}x {instrument} -> [{account.nt8_account}]")
         self._add_log(f"TRADE {direction_str} {ct}x {instrument} -> {account.nt8_account}",
@@ -766,7 +803,9 @@ class OrchestratorEngine:
                 acc_name = nt8.get("name", "")
                 pos_list = nt8.get("positions", [])
                 if not pos_list:
-                    # No positions → reset cycle tracking (registra cierre externo si lo habia)
+                    # No positions → ciclo cerrado: resetear contador de adds
+                    self._cycle_adds.pop(acc_name, None)
+                    # reset cycle tracking (registra cierre externo si lo habia)
                     if acc_name in self._cycle_start_realized:
                         if datetime.now().timestamp() - self._last_close_time.get(acc_name, 0) >= 10:
                             acc = db.query(Account).filter(Account.nt8_account == acc_name).first()

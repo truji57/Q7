@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.37",
+    "date": "2026-08-19",
+    "description": "Fix MXP (max posiciones por ciclo): _send_entry ahora limita las sumas segun max_positions (contador _cycle_adds + conteo de unidades abiertas desde el status, robusto ante merge de NT8); el contador se resetea al cerrarse el ciclo"
+  },
+  {
     "version": "v0.36",
     "date": "2026-08-19",
     "description": "TPD/SLD (TP/SL diario): nuevos limites sobre PNL DIA que pausan la cuenta el resto del dia (estados TP_DIA/SL_DIA, reactivacion en reset diario), TPR/SLR siempre sobre PNL RONDA, prioridad TPG/SLG->TPD/SLD->TPR/SLR->TPC/SLC, edicion inline de nombre de cuenta y modal estilo app en Groups"
