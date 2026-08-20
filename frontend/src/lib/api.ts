@@ -56,4 +56,18 @@ export const api = {
     request<any>(`/stats/accounts/${id}/equity${qs({ bucket, from, to })}`),
   getStatsGroup: (id: number, from?: string, to?: string) => request<any>(`/stats/groups/${id}${qs({ from, to })}`),
   getStatsPresets: (from?: string, to?: string) => request<any[]>(`/stats/presets${qs({ from, to })}`),
+
+  // History
+  getHistoryTrades: () => request<any[]>('/history/trades'),
+
+  // Fleets
+  getFleets: () => request<any[]>('/fleets'),
+  createFleet: (data: any) => request<any>('/fleets', { method: 'POST', body: JSON.stringify(data) }),
+  updateFleet: (id: number, data: any) => request<any>(`/fleets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteFleet: (id: number) => request<any>(`/fleets/${id}`, { method: 'DELETE' }),
+  addGroupToFleet: (fleetId: number, groupId: number) => request<any>(`/fleets/${fleetId}/groups/${groupId}`, { method: 'POST' }),
+  removeGroupFromFleet: (fleetId: number, groupId: number) => request<any>(`/fleets/${fleetId}/groups/${groupId}`, { method: 'DELETE' }),
+  reorderFleet: (fleetId: number, groupIds: number[]) => request<any>(`/fleets/${fleetId}/order`, { method: 'PUT', body: JSON.stringify({ group_ids: groupIds }) }),
+  activateFleet: (id: number) => request<any>(`/fleets/${id}/activate`, { method: 'POST' }),
+  deactivateFleet: (id: number) => request<any>(`/fleets/${id}/deactivate`, { method: 'POST' }),
 };

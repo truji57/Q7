@@ -13,6 +13,7 @@ from app.models.account import ActivityLog, SymbolMap
 from app.schemas.account import (
     GroupCreate, GroupUpdate, GroupSchema,
     AccountCreate, AccountUpdate, AccountSchema,
+    FleetCreate, FleetUpdate, FleetSchema,
     DashboardState
 )
 
@@ -164,6 +165,81 @@ def test_account(account_id: int, db: Session = Depends(get_db)):
     return {"ok": False, "error": "Orchestrator not running"}
 
 
+# ========== FLEETS ==========
+
+@router.get("/fleets", response_model=list[FleetSchema])
+def list_fleets(db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    return [svc.to_fleet_dict(f) for f in svc.get_all_fleets()]
+
+
+@router.post("/fleets", response_model=FleetSchema)
+def create_fleet(data: FleetCreate, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    f = svc.create_fleet(data.model_dump())
+    return svc.to_fleet_dict(f)
+
+
+@router.put("/fleets/{fleet_id}", response_model=FleetSchema)
+def update_fleet(fleet_id: int, data: FleetUpdate, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    f = svc.update_fleet(fleet_id, data.model_dump(exclude_none=True))
+    if not f:
+        raise HTTPException(404, "Fleet not found")
+    return svc.to_fleet_dict(f)
+
+
+@router.delete("/fleets/{fleet_id}")
+def delete_fleet(fleet_id: int, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    if not svc.delete_fleet(fleet_id):
+        raise HTTPException(404, "Fleet not found")
+    return {"ok": True}
+
+
+@router.post("/fleets/{fleet_id}/groups/{group_id}")
+def add_group_to_fleet(fleet_id: int, group_id: int, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    err = svc.add_group_to_fleet(fleet_id, group_id)
+    if err:
+        raise HTTPException(409, err)
+    return {"ok": True}
+
+
+@router.delete("/fleets/{fleet_id}/groups/{group_id}")
+def remove_group_from_fleet(fleet_id: int, group_id: int, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    if not svc.remove_group_from_fleet(fleet_id, group_id):
+        raise HTTPException(404, "Group not in fleet")
+    return {"ok": True}
+
+
+@router.put("/fleets/{fleet_id}/order")
+def reorder_fleet(fleet_id: int, data: dict, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    svc.reorder_fleet(fleet_id, data.get("group_ids", []))
+    return {"ok": True}
+
+
+@router.post("/fleets/{fleet_id}/activate")
+def activate_fleet(fleet_id: int, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    f = svc.update_fleet(fleet_id, {"active": True})
+    if not f:
+        raise HTTPException(404, "Fleet not found")
+    orch = get_orch()
+    if orch:
+        orch.reset_fleet_state(fleet_id)
+    return {"ok": True}
+
+
+@router.post("/fleets/{fleet_id}/deactivate")
+def deactivate_fleet(fleet_id: int, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    svc.update_fleet(fleet_id, {"active": False})
+    return {"ok": True}
+
+
 # ========== DASHBOARD ==========
 
 @router.get("/dashboard", response_model=DashboardState)
@@ -172,6 +248,7 @@ def dashboard(db: Session = Depends(get_db)):
     svc.reset_daily()
     return {
         "groups": [svc.to_group_dict(g) for g in svc.get_all_groups()],
+        "fleets": [svc.to_fleet_dict(f) for f in svc.get_all_fleets()],
     }
 
 
@@ -476,6 +553,22 @@ def stats_presets(from_dt: datetime | None = Query(None, alias="from"),
                   db: Session = Depends(get_db)):
     st = StatsService(db)
     return st.preset_summary(from_dt, to_dt)
+
+
+# ========== HISTORY ==========
+
+@router.get("/history/trades")
+def history_trades(account_id: int | None = None,
+                   group_id: int | None = None,
+                   direction: str | None = None,
+                   instrument: str | None = None,
+                   reason: str | None = None,
+                   from_dt: datetime | None = Query(None, alias="from"),
+                   to_dt: datetime | None = Query(None, alias="to"),
+                   limit: int = 2000,
+                   db: Session = Depends(get_db)):
+    st = StatsService(db)
+    return st.history_trades(account_id, group_id, direction, instrument, reason, from_dt, to_dt, limit)
 
 
 # ========== ACTIVITY LOG ==========

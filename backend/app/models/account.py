@@ -41,6 +41,7 @@ class Group(Base):
     created_at = Column(DateTime, default=datetime.now)
 
     accounts = relationship("Account", back_populates="group", cascade="all, delete-orphan")
+    fleet_link = relationship("FleetGroup", back_populates="group", uselist=False, cascade="all, delete-orphan")
 
 
 class Account(Base):
@@ -185,3 +186,38 @@ class ConfigSnapshot(Base):
     sld = Column(Float, default=0.0)
     tpg = Column(Float, default=0.0)
     slg = Column(Float, default=0.0)
+
+
+class Fleet(Base):
+    """Flota: agrupa grupos con modo serie/paralelo."""
+    __tablename__ = "fleets"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    mode = Column(String(20), default="paralelo")   # serie, paralelo
+    active = Column(Boolean, default=False)
+    color = Column(String(7), default="#4f8cff")
+
+    schedule_enabled = Column(Boolean, default=False)
+    schedule_start_h = Column(Integer, default=0)
+    schedule_start_m = Column(Integer, default=0)
+    schedule_end_h = Column(Integer, default=23)
+    schedule_end_m = Column(Integer, default=59)
+
+    created_at = Column(DateTime, default=datetime.now)
+
+    members = relationship("FleetGroup", back_populates="fleet",
+                           cascade="all, delete-orphan", order_by="FleetGroup.order_index")
+
+
+class FleetGroup(Base):
+    """Membresia: un grupo pertenece a una flota (group_id UNIQUE → maximo una flota)."""
+    __tablename__ = "fleet_groups"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fleet_id = Column(Integer, ForeignKey("fleets.id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False, unique=True)
+    order_index = Column(Integer, default=0)
+
+    fleet = relationship("Fleet", back_populates="members")
+    group = relationship("Group", back_populates="fleet_link")

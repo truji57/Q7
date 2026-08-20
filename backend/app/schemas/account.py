@@ -139,8 +139,44 @@ class GroupUpdate(BaseModel):
     default_slg: Optional[float] = None
 
 
+class FleetSchema(BaseModel):
+    id: int
+    name: str
+    mode: str = "paralelo"
+    active: bool
+    color: str
+    schedule_enabled: bool
+    schedule_start_h: int
+    schedule_start_m: int
+    schedule_end_h: int
+    schedule_end_m: int
+    groups: List[GroupSchema] = []
+
+    class Config:
+        from_attributes = True
+
+
+class FleetCreate(BaseModel):
+    name: str
+    mode: str = "paralelo"
+    color: str = "#4f8cff"
+
+
+class FleetUpdate(BaseModel):
+    name: Optional[str] = None
+    mode: Optional[str] = None
+    active: Optional[bool] = None
+    color: Optional[str] = None
+    schedule_enabled: Optional[bool] = None
+    schedule_start_h: Optional[int] = None
+    schedule_start_m: Optional[int] = None
+    schedule_end_h: Optional[int] = None
+    schedule_end_m: Optional[int] = None
+
+
 class DashboardState(BaseModel):
     groups: List[GroupSchema]
+    fleets: List[FleetSchema] = []
     timestamp: str
     nt8_connected: bool = False
     engine_active: bool = False

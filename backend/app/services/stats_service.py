@@ -10,7 +10,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.models.account import (
-    Account, EquitySnapshot, TradeClose, ConfigSnapshot,
+    Account, Group, EquitySnapshot, TradeClose, ConfigSnapshot,
 )
 
 
@@ -269,4 +269,39 @@ class StatsService:
                 "slg": snap.slg if snap else None,
             })
         out.sort(key=lambda r: -abs(r["net_pnl"]))
+        return out
+
+    def history_trades(self, account_id: int = None, group_id: int = None,
+                       direction: str = None, instrument: str = None, reason: str = None,
+                       from_dt=None, to_dt=None, limit: int = 2000) -> list:
+        """Listado de cierres (trade_closes) con datos de cuenta y grupo, para el Historial."""
+        q = (self.db.query(TradeClose, Account, Group)
+             .join(Account, TradeClose.account_id == Account.id)
+             .join(Group, Account.group_id == Group.id))
+        if account_id: q = q.filter(TradeClose.account_id == account_id)
+        if group_id: q = q.filter(TradeClose.group_id == group_id)
+        if direction: q = q.filter(TradeClose.direction == direction)
+        if instrument: q = q.filter(TradeClose.instrument == instrument)
+        if reason: q = q.filter(TradeClose.reason == reason)
+        if from_dt: q = q.filter(TradeClose.ts_close >= from_dt)
+        if to_dt: q = q.filter(TradeClose.ts_close <= to_dt)
+        q = q.order_by(TradeClose.ts_close.desc()).limit(limit)
+
+        out = []
+        for t, a, g in q.all():
+            out.append({
+                "id": t.id,
+                "account_id": t.account_id,
+                "account": a.name,
+                "nt8_account": a.nt8_account,
+                "group_id": t.group_id,
+                "group": g.name,
+                "ts_open": _fmt_dt(t.ts_open),
+                "ts_close": _fmt_dt(t.ts_close),
+                "direction": t.direction,
+                "instrument": t.instrument,
+                "pnl": round(t.pnl or 0, 2),
+                "reason": t.reason,
+                "preset_key": t.preset_key,
+            })
         return out

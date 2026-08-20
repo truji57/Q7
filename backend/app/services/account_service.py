@@ -3,7 +3,7 @@ Q7 Backend - Account & Group Service
 """
 from datetime import date
 from sqlalchemy.orm import Session, joinedload
-from app.models.account import Group, Account, TradeLog, Config
+from app.models.account import Group, Account, TradeLog, Config, Fleet, FleetGroup
 
 
 class AccountService:
@@ -188,3 +188,85 @@ class AccountService:
         else:
             self.db.add(Config(key=key, value=value))
         self.db.commit()
+
+    # ========== FLEETS ==========
+
+    def get_all_fleets(self) -> list[Fleet]:
+        return (self.db.query(Fleet)
+                .options(joinedload(Fleet.members).joinedload(FleetGroup.group))
+                .order_by(Fleet.id).all())
+
+    def get_fleet(self, fleet_id: int) -> Fleet | None:
+        return (self.db.query(Fleet)
+                .options(joinedload(Fleet.members).joinedload(FleetGroup.group))
+                .filter(Fleet.id == fleet_id).first())
+
+    def create_fleet(self, data: dict) -> Fleet:
+        f = Fleet(**data)
+        self.db.add(f)
+        self.db.commit()
+        self.db.refresh(f)
+        return f
+
+    def update_fleet(self, fleet_id: int, data: dict) -> Fleet | None:
+        f = self.db.query(Fleet).filter(Fleet.id == fleet_id).first()
+        if not f: return None
+        for k, v in data.items():
+            if v is not None and hasattr(f, k):
+                setattr(f, k, v)
+        self.db.commit()
+        self.db.refresh(f)
+        return f
+
+    def delete_fleet(self, fleet_id: int) -> bool:
+        f = self.db.query(Fleet).filter(Fleet.id == fleet_id).first()
+        if not f: return False
+        self.db.delete(f)
+        self.db.commit()
+        return True
+
+    def add_group_to_fleet(self, fleet_id: int, group_id: int) -> str | None:
+        """Devuelve None si ok (o ya estaba en esta flota), o un mensaje de error."""
+        fleet = self.db.query(Fleet).filter(Fleet.id == fleet_id).first()
+        if not fleet: return "Flota no encontrada"
+        g = self.db.query(Group).filter(Group.id == group_id).first()
+        if not g: return "Grupo no encontrado"
+        if g.fleet_link and g.fleet_link.fleet_id != fleet_id:
+            return "El grupo ya pertenece a otra flota"
+        if not g.fleet_link:
+            order = self.db.query(FleetGroup).filter(FleetGroup.fleet_id == fleet_id).count()
+            self.db.add(FleetGroup(fleet_id=fleet_id, group_id=group_id, order_index=order))
+            self.db.commit()
+        return None
+
+    def remove_group_from_fleet(self, fleet_id: int, group_id: int) -> bool:
+        fg = (self.db.query(FleetGroup)
+              .filter(FleetGroup.fleet_id == fleet_id, FleetGroup.group_id == group_id).first())
+        if not fg: return False
+        self.db.delete(fg)
+        self.db.commit()
+        return True
+
+    def reorder_fleet(self, fleet_id: int, group_ids: list):
+        fgs = self.db.query(FleetGroup).filter(FleetGroup.fleet_id == fleet_id).all()
+        order = {gid: i for i, gid in enumerate(group_ids)}
+        for fg in fgs:
+            if fg.group_id in order:
+                fg.order_index = order[fg.group_id]
+        self.db.commit()
+
+    def to_fleet_dict(self, f: Fleet) -> dict:
+        members = sorted(f.members, key=lambda m: m.order_index)
+        return {
+            "id": f.id,
+            "name": f.name,
+            "mode": f.mode or "paralelo",
+            "active": f.active,
+            "color": f.color or "#4f8cff",
+            "schedule_enabled": f.schedule_enabled,
+            "schedule_start_h": f.schedule_start_h,
+            "schedule_start_m": f.schedule_start_m,
+            "schedule_end_h": f.schedule_end_h,
+            "schedule_end_m": f.schedule_end_m,
+            "groups": [{**self.to_group_dict(m.group), "fleet_order": m.order_index} for m in members],
+        }

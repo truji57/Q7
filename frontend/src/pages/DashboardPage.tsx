@@ -25,8 +25,19 @@ const CATEGORY_COLORS: Record<string, string> = {
   ROTATION: 'bg-yellow-500/10 text-yellow-400',
   RESET: 'bg-amber-500/10 text-amber-400',
   GLOBAL: 'bg-red-500/10 text-red-400',
+  FLEET: 'bg-cyan-500/10 text-cyan-400',
   INFO: 'bg-zinc-700/20 text-zinc-500',
 };
+
+function hexToRgba(hex: string, alpha: number): string {
+  const h = (hex || '').replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return `rgba(79, 140, 255, ${alpha})`;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 type EditCellProps = { value: number; onSave: (v: number) => void; prefix?: string; warn?: boolean; warnTitle?: string };
 
@@ -127,13 +138,21 @@ export default function DashboardPage() {
     try { await api.deactivateGroup(groupId); addLog('Group ' + groupId + ' stopped'); } catch {}
   };
 
-  return (
-    <div>
-      {state.groups.map((group) => {
+  const toggleFleet = async (fleetId: number, active: boolean) => {
+    try {
+      if (active) { await api.deactivateFleet(fleetId); addLog('Flota ' + fleetId + ' parada'); }
+      else { await api.activateFleet(fleetId); addLog('Flota ' + fleetId + ' activada'); }
+    } catch {}
+  };
+
+  const fleetGroupIds = new Set((state.fleets || []).flatMap((f) => f.groups.map((g) => g.id)));
+  const looseGroups = state.groups.filter((g) => !fleetGroupIds.has(g.id));
+
+  const renderGroup = (group: Group) => {
         const isOpen = expanded.has(group.id);
         const activeAccounts = group.accounts.filter(a => a.enabled);
         const doneCount = activeAccounts.filter(a => a.status === 'TP_TOUCHED' || a.status === 'SL_TOUCHED').length;
-        const pendingCount = activeAccounts.filter(a => a.status === 'PENDING').length;
+        const pendingCount = activeAccounts.filter(a => a.status === 'PENDING' || a.status === 'TRADING').length;
 
         // Check if group is in schedule
         let inSchedule = true;
@@ -337,7 +356,39 @@ export default function DashboardPage() {
             )}
           </div>
         );
-      })}
+  };
+
+  return (
+    <div>
+      {(state.fleets || []).map((fleet) => (
+        <div key={`fleet-${fleet.id}`} className="mb-6 rounded-lg overflow-hidden border-2"
+          style={{ borderColor: hexToRgba(fleet.color, 0.4), backgroundColor: hexToRgba(fleet.color, 0.06) }}>
+          <div className="px-4 py-3 flex items-center gap-3 border-b border-[#1c1c2a]"
+            style={{ backgroundColor: hexToRgba(fleet.color, 0.22) }}>
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: fleet.color }} />
+            <span className="text-sm font-semibold text-zinc-100">{fleet.name}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full border ${fleet.active ? 'bg-green-500/10 text-green-400 border-green-500/30' : 'bg-zinc-500/10 text-zinc-500 border-zinc-500/30'}`}>
+              {fleet.active ? 'ACTIVE' : 'INACTIVE'}
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-[#6b7280]/10 text-zinc-400 uppercase">{fleet.mode === 'serie' ? 'Serie' : 'Paralelo'}</span>
+            <span className="text-[11px] text-zinc-500 ml-auto">{fleet.groups.length} grupos</span>
+            {fleet.active ? (
+              <button onClick={() => toggleFleet(fleet.id, true)} className="px-5 py-2.5 bg-red-500/40 border border-red-500/60 text-red-100 text-xs rounded font-bold hover:bg-red-500/60">
+                PARAR FLOTA
+              </button>
+            ) : (
+              <button onClick={() => toggleFleet(fleet.id, false)} className="px-5 py-2.5 bg-green-500/40 border border-green-500/60 text-green-50 text-xs rounded font-bold hover:bg-green-500/60">
+                ACTIVAR FLOTA
+              </button>
+            )}
+          </div>
+          <div className="p-3">
+            {fleet.groups.map((g) => renderGroup(g))}
+          </div>
+        </div>
+      ))}
+
+      {looseGroups.map((g) => renderGroup(g))}
 
       {/* Activity Log */}
       <div className="mt-8 bg-[#0e0e18] border border-[#1c1c2a] rounded-lg overflow-hidden">

@@ -67,6 +67,7 @@ export interface ActivityLogEntry {
 
 export interface DashboardState {
   groups: Group[];
+  fleets: Fleet[];
   version: string;
   timestamp: string;
   nt8_connected: boolean;
@@ -81,6 +82,20 @@ export interface DashboardState {
 export interface NT8Account {
   name: string;
   balance: number;
+}
+
+export interface Fleet {
+  id: number;
+  name: string;
+  mode: 'serie' | 'paralelo';
+  active: boolean;
+  color: string;
+  schedule_enabled: boolean;
+  schedule_start_h: number;
+  schedule_start_m: number;
+  schedule_end_h: number;
+  schedule_end_m: number;
+  groups: (Group & { fleet_order: number })[];
 }
 
 // ========== STATS ==========
@@ -189,4 +204,20 @@ export interface GroupStats {
   team_trades: number;
   team_max_dd: number;
   avg_winrate: number;
+}
+
+export interface HistoryTrade {
+  id: number;
+  account_id: number;
+  account: string;
+  nt8_account: string;
+  group_id: number;
+  group: string;
+  ts_open: string;
+  ts_close: string;
+  direction: string;
+  instrument: string;
+  pnl: number;
+  reason: string;
+  preset_key: string;
 }

@@ -10,7 +10,7 @@ import threading
 from datetime import date, datetime, time
 
 from app.database import SessionLocal
-from app.models.account import Account, Group, Config, ActivityLog, SymbolMap
+from app.models.account import Account, Group, Config, ActivityLog, SymbolMap, Fleet, FleetGroup
 from app.services.account_service import AccountService
 from app.services.stats_service import StatsService
 
@@ -33,6 +33,7 @@ class OrchestratorEngine:
         os.makedirs(os.path.join(self.signals_path, "processed"), exist_ok=True)
 
         self.group_state: dict[int, dict] = {}
+        self.fleet_state: dict[int, dict] = {}
         self.last_signal_time: str = ""
         self.signal_log: list[str] = []
         self.mt5_connected: bool = False
@@ -106,6 +107,23 @@ class OrchestratorEngine:
         with self._lock:
             self.group_state.pop(group_id, None)
             log.info(f"Group {group_id} reset")
+
+    def reset_fleet_state(self, fleet_id: int):
+        with self._lock:
+            self.fleet_state.pop(fleet_id, None)
+            log.info(f"Fleet {fleet_id} reset")
+
+    def _in_fleet_schedule(self, fleet) -> bool:
+        if not fleet.schedule_enabled:
+            return True
+        now = datetime.now()
+        start = time(fleet.schedule_start_h, fleet.schedule_start_m)
+        end = time(fleet.schedule_end_h, fleet.schedule_end_m)
+        current = now.time()
+        if start <= end:
+            return start <= current <= end
+        else:
+            return current >= start or current <= end
 
     def activate_group(self, group_id: int):
         with self._lock:
@@ -273,12 +291,55 @@ class OrchestratorEngine:
         except:
             return 0
 
+    def _fleet_current_group(self, fleet) -> Group | None:
+        """Grupo corriente de una flota en serie (o None si no hay miembro activo)."""
+        members = sorted(fleet.members, key=lambda m: m.order_index)
+        if not members:
+            return None
+        state = self.fleet_state.get(fleet.id)
+        cur_id = state.get("current_group_id") if state else None
+        if cur_id:
+            for m in members:
+                if m.group.id == cur_id and m.group.active:
+                    return m.group
+        for m in members:
+            if m.group.active:
+                return m.group
+        return None
+
+    def _signal_targets(self, db, svc) -> list[Group]:
+        """Lista ordenada de grupos que deben recibir una senal (flotas + sueltos)."""
+        targets: list[Group] = []
+        fleet_used: set[int] = set()
+        for fleet in svc.get_all_fleets():
+            if not fleet.active:
+                continue
+            if not fleet.members:
+                continue
+            if not self._in_fleet_schedule(fleet):
+                continue
+            if fleet.mode == "paralelo":
+                for m in sorted(fleet.members, key=lambda m: m.order_index):
+                    if m.group.active:
+                        targets.append(m.group)
+                        fleet_used.add(m.group.id)
+            else:  # serie
+                cur = self._fleet_current_group(fleet)
+                if cur and cur.active:
+                    targets.append(cur)
+                    fleet_used.add(cur.id)
+        # Grupos sueltos (sin flota), en orden
+        for g in svc.get_all_groups():
+            if g.active and g.id not in fleet_used and not g.fleet_link:
+                targets.append(g)
+        return targets
+
     def _handle_entry(self, signal: dict):
         """OPEN_LONG / OPEN_SHORT (back-compat: CYCLE_START / ADD_POSITION).
 
-        Abre o SUMA posicion en la cuenta activa del grupo. La direccion sale
-        SIEMPRE de la senal (nunca de estado interno). Repetir la misma
-        direccion con posicion abierta = anadir contratos en esa misma cuenta.
+        Distribuye la senal a los grupos destino (flotas serie/paralelo + grupos
+        sueltos). Abre o SUMA posicion en la cuenta activa de cada grupo destino.
+        La direccion sale SIEMPRE de la senal (nunca de estado interno).
         """
         sig_type = (signal.get("type") or "").upper()
         direction = 1 if (signal.get("direction", 1) or 1) > 0 else -1
@@ -287,7 +348,6 @@ class OrchestratorEngine:
         elif sig_type == "OPEN_LONG":
             direction = 1
         direction_str = "LONG" if direction > 0 else "SHORT"
-        signal_instrument = signal.get("instrument") or "?"
 
         with self._lock:
             db = SessionLocal()
@@ -295,13 +355,13 @@ class OrchestratorEngine:
                 svc = AccountService(db)
                 svc.reset_daily()
 
-                groups = svc.get_all_groups()
-                active_groups = [g for g in groups if g.active]
-                if not active_groups:
-                    log.warning(f"{direction_str}: no active group")
+                targets = self._signal_targets(db, svc)
+                if not targets:
+                    log.warning(f"{direction_str}: no active group in schedule")
                     return
 
-                for active_group in active_groups:
+                sent_any = False
+                for active_group in targets:
                     if not self._in_schedule(active_group):
                         continue
 
@@ -323,7 +383,8 @@ class OrchestratorEngine:
                             state["active_account_id"] = target.id
                         self.group_state[active_group.id] = state
                         self._send_entry(target, signal)
-                        return
+                        sent_any = True
+                        continue
 
                     # 2) Sin cuenta activa -> NUNCA activar otra mientras haya posiciones abiertas
                     if self._group_has_open_positions(db, active_group.id):
@@ -335,7 +396,8 @@ class OrchestratorEngine:
                         target = self._reset_continuo(db, active_group, enabled, state)
                         if target:
                             self._send_entry(target, signal)
-                            return
+                            sent_any = True
+                            continue
 
                     # 4) Rotacion: siguiente PENDING no procesado
                     processed = state.get("processed", [])
@@ -356,9 +418,10 @@ class OrchestratorEngine:
                     db.commit()
                     log.info(f"Group {active_group.id}: -> {target.name}")
                     self._send_entry(target, signal)
-                    return
+                    sent_any = True
 
-                log.warning(f"{direction_str}: no group in schedule with available accounts")
+                if not sent_any:
+                    log.warning(f"{direction_str}: no group with available accounts")
             finally:
                 db.close()
 
@@ -594,6 +657,32 @@ class OrchestratorEngine:
                     db.commit()
                 # mode == "diario": no hacer nada, reset_daily() se encarga a las 00:00
 
+            # Flota en serie: avanzar al siguiente grupo miembro
+            self._advance_fleet_after_group_done(db, group_id)
+
+    def _advance_fleet_after_group_done(self, db, group_id: int):
+        """Si el grupo pertenece a una flota en serie, avanza al siguiente miembro activo."""
+        g = db.query(Group).filter(Group.id == group_id).first()
+        if not g or not g.fleet_link:
+            return
+        fleet = g.fleet_link.fleet
+        if not fleet or fleet.mode != "serie":
+            return
+        members = sorted(fleet.members, key=lambda m: m.order_index)
+        state = self.fleet_state.get(fleet.id) or {}
+        cur_id = state.get("current_group_id") or group_id
+        idx = next((i for i, m in enumerate(members) if m.group.id == cur_id), None)
+        start = (idx + 1) if idx is not None else 0
+        for m in members[start:]:
+            if m.group.active:
+                self.fleet_state[fleet.id] = {"current_group_id": m.group.id}
+                log.info(f"Fleet {fleet.id} (serie): -> group {m.group.id}")
+                self._add_log(f"Fleet {fleet.name}: serie -> {m.group.name}", category="FLEET")
+                return
+        self.fleet_state[fleet.id] = {"current_group_id": None}
+        log.info(f"Fleet {fleet.id} (serie): completada")
+        self._add_log(f"Fleet {fleet.name}: serie completada", category="FLEET")
+
     def _in_schedule(self, group: Group) -> bool:
         if not group.schedule_enabled:
             return True
@@ -641,6 +730,7 @@ class OrchestratorEngine:
             self._sync_balances(db)
             return {
                 "groups": [svc.to_group_dict(g) for g in svc.get_all_groups()],
+                "fleets": [svc.to_fleet_dict(f) for f in svc.get_all_fleets()],
                 "version": self._get_version(),
                 "timestamp": datetime.now().isoformat(),
                 "nt8_connected": self._is_nt8_connected(),
