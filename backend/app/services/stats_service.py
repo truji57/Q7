@@ -43,7 +43,7 @@ class StatsService:
 
     def record_close(self, account: Account, pnl: float, reason: str, ts_open=None):
         """Registra un cierre de ciclo + el snapshot de config que lo produjo."""
-        ts_close = datetime.utcnow()
+        ts_close = datetime.now()
         preset_key = make_preset_key(account)
         self.db.add(TradeClose(
             account_id=account.id, group_id=account.group_id,
@@ -67,7 +67,7 @@ class StatsService:
         """Inserta un punto de equity (balance + open pnl)."""
         self.db.add(EquitySnapshot(
             account_id=account.id, group_id=account.group_id,
-            ts=datetime.utcnow(),
+            ts=datetime.now(),
             balance=account.balance or 0.0,
             equity=(account.balance or 0.0) + (account.open_pnl or 0.0),
             daily_pnl=account.daily_pnl or 0.0,

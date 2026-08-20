@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.38",
+    "date": "2026-08-19",
+    "description": "Todo en hora local: ActivityLog, snapshots de equity, cierres y timestamps del dashboard usan datetime.now() en vez de UTC; Stats envia rangos y muestra ejes en hora local"
+  },
+  {
     "version": "v0.37",
     "date": "2026-08-19",
     "description": "Fix MXP (max posiciones por ciclo): _send_entry ahora limita las sumas segun max_positions (contador _cycle_adds + conteo de unidades abiertas desde el status, robusto ante merge de NT8); el contador se resetea al cerrarse el ciclo"

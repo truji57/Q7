@@ -16,6 +16,11 @@ const RANGES: { key: Range; label: string }[] = [
   { key: 'all', label: 'Todo' },
 ];
 
+function toLocalIso(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 function rangeParams(r: Range): { from?: string; to?: string } {
   if (r === 'all') return {};
   const now = new Date();
@@ -26,7 +31,7 @@ function rangeParams(r: Range): { from?: string; to?: string } {
     const days = r === '7d' ? 7 : 30;
     from = new Date(now.getTime() - days * 86400000);
   }
-  return { from: from.toISOString(), to: now.toISOString() };
+  return { from: toLocalIso(from), to: toLocalIso(now) };
 }
 
 const fmtMoney = (v: number | undefined | null, dec = 0) => {
@@ -85,8 +90,8 @@ function EquityChart({ points }: { points: EquityPoint[] }) {
   const tickFmt = (ts: string) => {
     const d = new Date(ts);
     return spanDays > 1
-      ? `${d.getUTCMonth() + 1}-${String(d.getUTCDate()).padStart(2, '0')}`
-      : `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+      ? `${d.getMonth() + 1}-${String(d.getDate()).padStart(2, '0')}`
+      : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
   const max = Math.max(...points.map((p) => Math.max(p.balance, p.equity)));
   const min = Math.min(...points.map((p) => Math.min(p.balance, p.equity)));

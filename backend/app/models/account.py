@@ -38,7 +38,7 @@ class Group(Base):
     default_tpg = Column(Float, default=0.0)
     default_slg = Column(Float, default=0.0)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
 
     accounts = relationship("Account", back_populates="group", cascade="all, delete-orphan")
 
@@ -86,8 +86,8 @@ class Account(Base):
     trades_today = Column(Integer, default=0)
 
     last_reset = Column(Date, default=date.today)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     group = relationship("Group", back_populates="accounts")
 
@@ -105,7 +105,7 @@ class TradeLog(Base):
     exit_price = Column(Float, nullable=True)
     pnl = Column(Float, default=0.0)
     status = Column(String(20), default="OPEN")
-    entry_time = Column(DateTime, default=datetime.utcnow)
+    entry_time = Column(DateTime, default=datetime.now)
     exit_time = Column(DateTime, nullable=True)
 
 
@@ -123,14 +123,14 @@ class SymbolMap(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     mt5_symbol = Column(String(50), unique=True, nullable=False)      # Simbolo que envia el EA (USTEC, NAS100, ...)
     nt8_instrument = Column(String(100), nullable=False)             # Futuro en NT8 (MNQ 09-26, MES 09-26, ...)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
 
 
 class ActivityLog(Base):
     __tablename__ = "activity_log"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.now)
     category = Column(String(20))    # SIGNAL, TRADE, ROTATION, RESET, GLOBAL, CYCLE
     message = Column(String(500))
     account = Column(String(100), nullable=True)
@@ -144,7 +144,7 @@ class EquitySnapshot(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     group_id = Column(Integer, nullable=True, index=True)
-    ts = Column(DateTime, default=datetime.utcnow, index=True)
+    ts = Column(DateTime, default=datetime.now, index=True)
     balance = Column(Float, default=0.0)
     equity = Column(Float, default=0.0)
     daily_pnl = Column(Float, default=0.0)
@@ -158,7 +158,7 @@ class TradeClose(Base):
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     group_id = Column(Integer, nullable=True, index=True)
     ts_open = Column(DateTime, nullable=True)
-    ts_close = Column(DateTime, default=datetime.utcnow, index=True)
+    ts_close = Column(DateTime, default=datetime.now, index=True)
     direction = Column(String(10), default="?")
     instrument = Column(String(50), default="--")
     pnl = Column(Float, default=0.0)
@@ -173,7 +173,7 @@ class ConfigSnapshot(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     group_id = Column(Integer, nullable=True)
-    ts = Column(DateTime, default=datetime.utcnow)
+    ts = Column(DateTime, default=datetime.now)
     preset_key = Column(String(40), nullable=True, index=True)
     ct = Column(Integer, default=1)
     max_positions = Column(Integer, default=6)

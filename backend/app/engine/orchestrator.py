@@ -231,7 +231,7 @@ class OrchestratorEngine:
                     self.on_signal(signal)
                     self._add_log(f"SIGNAL {signal.get('action','?')}", category="SIGNAL")
 
-                self.last_signal_time = datetime.utcnow().isoformat()
+                self.last_signal_time = datetime.now().isoformat()
             except Exception as e:
                 log.error(f"Signal error: {e}")
 
@@ -642,7 +642,7 @@ class OrchestratorEngine:
             return {
                 "groups": [svc.to_group_dict(g) for g in svc.get_all_groups()],
                 "version": self._get_version(),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now().isoformat(),
                 "nt8_connected": self._is_nt8_connected(),
                 "engine_active": self._is_engine_active(),
                 "mt5_connected": self._is_mt5_connected(),
@@ -703,7 +703,7 @@ class OrchestratorEngine:
         # Persistir en BD
         try:
             db = SessionLocal()
-            db.add(ActivityLog(timestamp=datetime.utcnow(), category=category,
+            db.add(ActivityLog(timestamp=datetime.now(), category=category,
                                message=msg, account=account, group_id=group_id))
             db.commit()
             db.close()
@@ -714,7 +714,7 @@ class OrchestratorEngine:
         try:
             if self.last_signal_time:
                 ts = datetime.fromisoformat(self.last_signal_time)
-                if (datetime.utcnow() - ts).total_seconds() < 300:
+                if (datetime.now() - ts).total_seconds() < 300:
                     return True
             # NT8 heartbeat
             hb_file = os.path.join(self.signals_path, "heartbeat.json")
@@ -830,7 +830,7 @@ class OrchestratorEngine:
                 # Track cycle start baseline
                 if acc_name not in self._cycle_start_realized or self._cycle_start_realized[acc_name] is None:
                     self._cycle_start_realized[acc_name] = realized
-                    self._cycle_start_ts[acc_name] = datetime.utcnow()
+                    self._cycle_start_ts[acc_name] = datetime.now()
                     log.info(f"Cycle baseline for {acc_name}: realized={realized:.0f}")
 
         if not nt8_accounts:
