@@ -206,7 +206,7 @@ class OrchestratorEngine:
                 # Try reading with different encodings
                 signal = None
                 try:
-                    with open(filepath, "r", encoding="utf-8") as f:
+                    with open(filepath, "r", encoding="utf-8-sig") as f:
                         signal = json.load(f)
                 except (json.JSONDecodeError, UnicodeDecodeError):
                     try:
@@ -259,7 +259,7 @@ class OrchestratorEngine:
             files = sorted(glob.glob(os.path.join(self.status_path, "status_*.json")), reverse=True)
             if not files:
                 return False
-            with open(files[0], "r", encoding="utf-8") as f:
+            with open(files[0], "r", encoding="utf-8-sig") as f:
                 status = json.load(f)
             names = {nt8 for (nt8,) in db.query(Account.nt8_account).filter(Account.group_id == group_id).all()}
             for nt8 in status.get("accounts", []):
@@ -276,7 +276,7 @@ class OrchestratorEngine:
             files = sorted(glob.glob(os.path.join(self.status_path, "status_*.json")), reverse=True)
             if not files:
                 return 0
-            with open(files[0], "r", encoding="utf-8") as f:
+            with open(files[0], "r", encoding="utf-8-sig") as f:
                 status = json.load(f)
             for nt8 in status.get("accounts", []):
                 if nt8.get("name", "") == nt8_account:
@@ -861,7 +861,7 @@ class OrchestratorEngine:
             files = sorted(glob.glob(os.path.join(self.status_path, "status_*.json")), reverse=True)
             if not files:
                 return []
-            with open(files[0], "r", encoding="utf-8") as f:
+            with open(files[0], "r", encoding="utf-8-sig") as f:
                 status = json.load(f)
             accounts = status.get("accounts", [])
             return [{"name": a.get("name", ""), "balance": a.get("balance", 0)} for a in accounts]
@@ -874,7 +874,7 @@ class OrchestratorEngine:
         if not files:
             return
         try:
-            with open(files[0], "r", encoding="utf-8") as f:
+            with open(files[0], "r", encoding="utf-8-sig") as f:
                 status = json.load(f)
         except:
             return
@@ -1110,7 +1110,7 @@ class OrchestratorEngine:
         if not files:
             return {"ok": False, "error": "No status files. Restart NT8 / F5."}
         try:
-            with open(files[0], "r", encoding="utf-8") as f:
+            with open(files[0], "r", encoding="utf-8-sig") as f:
                 status = json.load(f)
         except:
             return {"ok": False, "error": "Cannot read status file"}

@@ -176,13 +176,15 @@ namespace NinjaTrader.NinjaScript.AddOns
 
         private static void WriteFileSafe(string path, string content)
         {
+            // UTF8 SIN BOM (igual que File.WriteAllText) para que el orquestador lo lea con utf-8.
+            var utf8NoBom = new System.Text.UTF8Encoding(false);
             const int maxAttempts = 4;
             for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
                 try
                 {
                     using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
-                    using (var w = new StreamWriter(fs, System.Text.Encoding.UTF8))
+                    using (var w = new StreamWriter(fs, utf8NoBom))
                     {
                         w.Write(content);
                         w.Flush();
