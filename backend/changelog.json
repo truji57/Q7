@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.42",
+    "date": "2026-08-31",
+    "description": "Cierre por fin de tramo horario: nueva config schedule_close_mode (close|run) en Settings. Con 'close', cualquier cuenta de un grupo OUTSIDE con posiciones abiertas se cierra automaticamente SIN importar su estado (fix para TP_RONDA atascada con posicion abierta). La gestion de posiciones abiertas (TPC/SLC/TPD/SLD/TPR/SLR/TPG/SLG) sigue corriendo SIEMPRE, dentro o fuera de horario"
+  },
+  {
     "version": "v0.41",
     "date": "2026-08-31",
     "description": "Hotfix: el WriteFileSafe del AddOn escribia status_YYYYMMDD.json con UTF-8 BOM y el orquestador (utf-8) no podia parsearlo -> dejaba de monitorizar posicion/flotante. AddOn ahora escribe UTF8 sin BOM y el orquestador lee con utf-8-sig (tolerante a BOM) [Requiere recompilar el AddOn en NT8]"

@@ -8,6 +8,7 @@ export default function ConfigPage() {
   const [bridgePort, setBridgePort] = useState('5556');
   const [mt5TerminalId, setMt5TerminalId] = useState('');
   const [debugMode, setDebugMode] = useState(false);
+  const [scheduleCloseMode, setScheduleCloseMode] = useState('close');
   const [saved, setSaved] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [changelog, setChangelog] = useState<{version: string; date: string; description: string}[]>([]);
@@ -23,6 +24,7 @@ export default function ConfigPage() {
       setBridgePort(c.bridge_port || '5556');
       setMt5TerminalId(c.mt5_terminal_id || 'D0E8209F77C8CF37AD8BF550E51FF075');
       setDebugMode(c.debug_mode === 'true');
+      setScheduleCloseMode(c.schedule_close_mode || 'close');
     }).catch(() => {});
     api.getChangelog().then((data) => {
       console.log('Changelog loaded:', data);
@@ -58,7 +60,8 @@ export default function ConfigPage() {
         bridge_host: bridgeHost,
         bridge_port: bridgePort,
         mt5_terminal_id: mt5TerminalId,
-        debug_mode: debugMode ? 'true' : 'false'
+        debug_mode: debugMode ? 'true' : 'false',
+        schedule_close_mode: scheduleCloseMode
       });
       setDebug(debugMode);
       setSaved(true);
@@ -130,6 +133,26 @@ export default function ConfigPage() {
             <Download size={13} />
             {installed ? 'Copiado! Compila F5 en NT8' : 'Instalar AddOn en NT8'}
           </button>
+        </div>
+
+        <div className="border-t border-[#1a1a2a] pt-5">
+          <h3 className="text-sm font-semibold text-zinc-300 mb-2">Fin de tramo horario</h3>
+          <p className="text-[10px] text-zinc-600 mb-3 leading-relaxed">
+            Cuando el tramo horario de un grupo finalice con una posicion abierta:
+          </p>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-400">
+              <input type="radio" name="scheduleClose" className="w-4 h-4" checked={scheduleCloseMode === 'close'} onChange={() => setScheduleCloseMode('close')} />
+              Cerrar todas las posiciones del grupo al terminar el tramo
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-400">
+              <input type="radio" name="scheduleClose" className="w-4 h-4" checked={scheduleCloseMode === 'run'} onChange={() => setScheduleCloseMode('run')} />
+              Dejar correr la posicion gestionada (TP/SL siguen activos), pero no abrir mas
+            </label>
+          </div>
+          <p className="text-[10px] text-zinc-600 mt-2">
+            La gestion de la posicion abierta (TPC/SLC/TPD/SLD/TPR/SLR/TPG/SLG) se ejecuta SIEMPRE, dentro o fuera del horario.
+          </p>
         </div>
 
         <div className="border-t border-[#1a1a2a] pt-5">

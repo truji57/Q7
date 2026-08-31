@@ -294,6 +294,7 @@ def get_config(db: Session = Depends(get_db)):
         "mt5_terminal_id": svc.get_config("mt5_terminal_id") or "D0E8209F77C8CF37AD8BF550E51FF075",
         "default_instrument": svc.get_config("default_instrument") or "MNQ 09-26",
         "stats_interval_s": svc.get_config("stats_interval_s") or "10",
+        "schedule_close_mode": svc.get_config("schedule_close_mode") or "close",
     }
 
 

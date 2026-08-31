@@ -927,6 +927,20 @@ class OrchestratorEngine:
             db.commit()
             return
 
+        # Opcion de cierre al finalizar el tramo horario (schedule_close_mode = close|run).
+        # La gestion de posiciones abiertas (TPC/SLC/TPD/SLD/TPR/SLR/TPG/SLG...) SIEMPRE corre
+        # (este loop no depende del horario); este flag solo decide si al acabar el tramo se
+        # cierran las posiciones del grupo o se dejan correr, gestionadas pero sin nuevas entradas.
+        close_mode = self._get_config("schedule_close_mode") or "close"
+        out_of_schedule: set[int] = set()
+        if close_mode == "close":
+            try:
+                for g in db.query(Group).filter(Group.schedule_enabled == True).all():
+                    if not self._in_schedule(g):
+                        out_of_schedule.add(g.id)
+            except:
+                pass
+
         for nt8 in nt8_accounts:
             name = nt8.get("name", "")
             if not name:
@@ -1082,6 +1096,20 @@ class OrchestratorEngine:
                 self._cycle_start_realized.pop(name, None)
                 self._cycle_start_ts.pop(name, None)
                 self._add_log(f"{name}: CYCLE SL -${abs(cycle_pnl):.0f} ≥ -${acc.slc:.0f} → closed", category="CYCLE", account=name)
+
+            # Fin de tramo horario: si la config lo pide, cerrar las posiciones abiertas
+            # de las cuentas de grupos que ya estan fuera de su horario. Garantia total:
+            # se cierra SIN importar el estado de la cuenta (PENDING/TRADING/TP_RONDA/...).
+            if close_mode == "close" and acc.group_id in out_of_schedule and pos_list:
+                if datetime.now().timestamp() - self._last_close_time.get(name, 0) >= 10:
+                    self._write_trade(name, "", "", 0, 0, 0, close_all=True)
+                    self._last_close_time[name] = datetime.now().timestamp()
+                    if cycle_pnl is not None:
+                        self._record_close(db, acc, cycle_pnl, "SCHEDULE")
+                        self._cycle_start_realized.pop(name, None)
+                        self._cycle_start_ts.pop(name, None)
+                    self._add_log(f"{name}: cierre por fin de tramo horario del grupo → posicion cerrada",
+                                  category="CYCLE", account=name)
 
             # If account was TP/SL and position is now closed, rotate
             if not pos_list and acc.status in ("TP_RONDA", "SL_RONDA", "TP_DIA", "SL_DIA", "TP_GLOBAL", "SL_GLOBAL", "TP_TOUCHED", "SL_TOUCHED"):

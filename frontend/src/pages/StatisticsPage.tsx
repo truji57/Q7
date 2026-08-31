@@ -150,7 +150,7 @@ function DailyPnlChart({ trades }: { trades: { ts_close: string; pnl: number }[]
 
 const REASON_LABELS: Record<string, string> = {
   TPC: 'TP Ciclo', SLC: 'SL Ciclo', DAILY_TP: 'TP Diario', DAILY_SL: 'SL Diario',
-  ROUND_TP: 'TP Ronda', ROUND_SL: 'SL Ronda', TPG: 'TP Global', SLG: 'SL Global', EXTERNAL: 'Externo',
+  ROUND_TP: 'TP Ronda', ROUND_SL: 'SL Ronda', TPG: 'TP Global', SLG: 'SL Global', EXTERNAL: 'Externo', SCHEDULE: 'Fin de tramo',
 };
 
 export default function StatisticsPage() {
