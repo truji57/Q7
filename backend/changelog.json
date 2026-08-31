@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.40",
+    "date": "2026-08-31",
+    "description": "Fix crash de NT8: Q7AccountManagerAddOn ya no muere por IOException de fichero en uso al escribir status_YYYYMMDD.json. OnPoll y WriteStatus protegidos con try/catch, nueva WriteFileSafe (FileShare.ReadWrite + reintentos), hacerlo robusto ante locks del orquestador/antivirus/OneDrive. Backups en .backups/ [Requiere recompilar el AddOn en NT8]"
+  },
+  {
     "version": "v0.39",
     "date": "2026-08-19",
     "description": "Flotas: agrupar grupos con modo serie/paralelo (tablas fleet/fleet_groups, CRUD, dispatcher de senales, avance en serie), pantalla Flotas con selector de color y membresia unica, contenedores de flota coloreados en el dashboard con boton ACTIVAR/PARAR FLOTA, y nueva pantalla Historial (activity log completo del orquestador con filtro por categoria). Backfill de preset_key para fusionar presets separados por el cambio de hash de TPD/SLD"

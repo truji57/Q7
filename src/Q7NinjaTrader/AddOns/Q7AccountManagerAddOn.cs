@@ -37,7 +37,7 @@ namespace NinjaTrader.NinjaScript.AddOns
             else if (State == State.Active)
             {
                 Print("Q7 Bridge: " + GetAllAccountNames());
-                WriteStatus("Bridge ready");
+                try { WriteStatus("Bridge ready"); } catch { }
                 pollTimer = new System.Threading.Timer(_ => OnPoll(), null, 200, 200);
             }
             else if (State == State.Terminated)
@@ -48,8 +48,12 @@ namespace NinjaTrader.NinjaScript.AddOns
 
         private void OnPoll()
         {
-            try { ProcessCommands(); } catch { }
-            WriteStatus("OK");
+            try
+            {
+                ProcessCommands();
+                WriteStatus("OK");
+            }
+            catch { } // NUNCA dejar que un error de fichero (lock IOException) mate a NT8
         }
 
         // ============= COMMANDS =============
@@ -163,8 +167,37 @@ namespace NinjaTrader.NinjaScript.AddOns
                 ["accounts"] = accountList
             };
 
-            File.WriteAllText(Path.Combine(statusPath, "status_" + DateTime.Now.ToString("yyyyMMdd") + ".json"),
-                              json.Serialize(status));
+            // Escribir de forma resiliente: FileShare.ReadWrite + reintentos + nunca lanzar.
+            // Evita el crash de NT8 (0xe0434352) por IOException "fichero en uso" cuando otro
+            // proceso (orquestador lector, antivirus, OneDrive, editor) toca el status.
+            WriteFileSafe(Path.Combine(statusPath, "status_" + DateTime.Now.ToString("yyyyMMdd") + ".json"),
+                          json.Serialize(status));
+        }
+
+        private static void WriteFileSafe(string path, string content)
+        {
+            const int maxAttempts = 4;
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                try
+                {
+                    using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+                    using (var w = new StreamWriter(fs, System.Text.Encoding.UTF8))
+                    {
+                        w.Write(content);
+                        w.Flush();
+                    }
+                    return;
+                }
+                catch (IOException)
+                {
+                    if (attempt < maxAttempts - 1) Thread.Sleep(50);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    if (attempt < maxAttempts - 1) Thread.Sleep(50);
+                }
+            }
         }
 
         // ============= HELPERS =============

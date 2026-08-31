@@ -49,3 +49,4 @@ install*.bat
 
 # OpenCode (planes y config local)
 .opencode/
+.backups/
