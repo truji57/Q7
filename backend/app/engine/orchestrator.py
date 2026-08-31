@@ -160,6 +160,7 @@ class OrchestratorEngine:
             ).order_by(Account.order_index).all()
 
             if not accounts:
+                log.info(f"send_test_trade({action}): sin cuentas PENDING (todas completadas o TP/SL)")
                 return {"error": "No PENDING accounts. All done or TP/SL reached."}
 
             account = accounts[0]
@@ -313,10 +314,12 @@ class OrchestratorEngine:
         fleet_used: set[int] = set()
         for fleet in svc.get_all_fleets():
             if not fleet.active:
+                log.info(f"Fleet {fleet.id} '{fleet.name}': senal ignorada, flota no activa")
                 continue
             if not fleet.members:
                 continue
             if not self._in_fleet_schedule(fleet):
+                log.info(f"Fleet {fleet.id} '{fleet.name}': senal ignorada, fuera del horario de la flota")
                 continue
             if fleet.mode == "paralelo":
                 for m in sorted(fleet.members, key=lambda m: m.order_index):
@@ -332,6 +335,8 @@ class OrchestratorEngine:
         for g in svc.get_all_groups():
             if g.active and g.id not in fleet_used and not g.fleet_link:
                 targets.append(g)
+            elif not g.active and not g.fleet_link and any(a.enabled for a in g.accounts):
+                log.info(f"Group {g.id} '{g.name}': senal ignorada, grupo NO ACTIVO")
         return targets
 
     def _handle_entry(self, signal: dict):
@@ -360,13 +365,18 @@ class OrchestratorEngine:
                     log.warning(f"{direction_str}: no active group in schedule")
                     return
 
+                target_names = [g.name for g in targets]
+                log.info(f"{direction_str} senal (instrumento={signal.get('instrument','?')}): {len(targets)} grupo(s) destino -> {target_names}")
+
                 sent_any = False
                 for active_group in targets:
                     if not self._in_schedule(active_group):
+                        log.info(f"Group {active_group.id} '{active_group.name}': {direction_str} ignorado, fuera de horario")
                         continue
 
                     enabled = [a for a in svc.get_accounts(active_group.id) if a.enabled]
                     if not enabled:
+                        log.info(f"Group {active_group.id} '{active_group.name}': {direction_str} ignorado, sin cuentas habilitadas")
                         continue
 
                     state = self.group_state.get(active_group.id, {"processed": []})
@@ -403,6 +413,8 @@ class OrchestratorEngine:
                     processed = state.get("processed", [])
                     target = next((a for a in enabled if a.id not in processed and a.status == "PENDING"), None)
                     if not target:
+                        statuses = {a.status for a in enabled}
+                        log.info(f"Group {active_group.id} '{active_group.name}': {direction_str} ignorado, sin cuenta PENDING disponible (estados={statuses} processed={processed})")
                         continue
 
                     # Safety: solo UN TRADING por grupo
@@ -524,22 +536,28 @@ class OrchestratorEngine:
                 for group_id, state in list(self.group_state.items()):
                     group = db.query(Group).filter(Group.id == group_id).first()
                     if not group or not group.active:
+                        if group:
+                            log.info(f"[G{group_id}] on_signal '{action}': ignorado, grupo no activo")
                         continue
 
                     if not self._in_schedule(group):
+                        log.info(f"[G{group_id}] on_signal '{action}': ignorado, fuera de horario")
                         continue
 
                     if group.direction != "BOTH":
                         if (group.direction == "LONG" and "SHORT" in action) or \
                            (group.direction == "SHORT" and "LONG" in action):
+                            log.info(f"[G{group_id}] on_signal '{action}': ignorado, direccion {group.direction} no admite esta senal")
                             continue
 
                     active_id = state.get("active_account_id")
                     if not active_id:
+                        log.info(f"[G{group_id}] on_signal '{action}': ignorado, sin cuenta activa en el estado del grupo")
                         continue
 
                     account = db.query(Account).filter(Account.id == active_id).first()
                     if not account or not account.enabled:
+                        log.info(f"[G{group_id}] on_signal '{action}': cuenta activa {active_id} no habilitada/invalida -> rotacion")
                         self._next_account(group_id, state, db)
                         continue
 

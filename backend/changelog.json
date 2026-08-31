@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.43",
+    "date": "2026-08-31",
+    "description": "Log del orquestador a fichero (backend/logs/orchestrator.log, rotativo) para diagnosticar en remoto, y logs de MOTIVO en todos los puntos de decision: senal con grupos destino, grupo no activo/fuera de horario/sin cuentas habilitadas/sin PENDING disponible (con estados), MXP alcanzado, flotas inactivas, vias legacy y test manual"
+  },
+  {
     "version": "v0.42",
     "date": "2026-08-31",
     "description": "Cierre por fin de tramo horario: nueva config schedule_close_mode (close|run) en Settings. Con 'close', cualquier cuenta de un grupo OUTSIDE con posiciones abiertas se cierra automaticamente SIN importar su estado (fix para TP_RONDA atascada con posicion abierta). La gestion de posiciones abiertas (TPC/SLC/TPD/SLD/TPR/SLR/TPG/SLG) sigue corriendo SIEMPRE, dentro o fuera de horario"

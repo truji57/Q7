@@ -3,8 +3,10 @@ Q7 Backend - Main Application
 """
 import asyncio
 import logging
+import os
 import threading
 from contextlib import asynccontextmanager
+from logging.handlers import RotatingFileHandler
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +21,19 @@ from app.api.routes import router
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("Q7Backend")
+
+# Log a fichero (ademas de consola) para poder diagnosticar el orquestador en remoto:
+# backend/logs/orchestrator.log con rotacion. El amigo puede mandar este fichero.
+_QLOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
+try:
+    os.makedirs(_QLOG_DIR, exist_ok=True)
+    _fh = RotatingFileHandler(os.path.join(_QLOG_DIR, "orchestrator.log"),
+                              maxBytes=5_000_000, backupCount=3, encoding="utf-8")
+    _fh.setLevel(logging.INFO)
+    _fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    logging.getLogger().addHandler(_fh)
+except Exception as e:
+    log.warning(f"No se pudo crear log a fichero: {e}")
 
 orchestrator: OrchestratorEngine | None = None
 

@@ -50,3 +50,5 @@ install*.bat
 # OpenCode (planes y config local)
 .opencode/
 .backups/
+backend/app/logs/
+backend/logs/
