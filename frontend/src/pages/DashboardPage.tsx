@@ -360,7 +360,17 @@ export default function DashboardPage() {
 
   return (
     <div>
-      {(state.fleets || []).map((fleet) => (
+      {(state.fleets || []).map((fleet) => {
+        let fleetInSchedule = true;
+        if (fleet.schedule_enabled) {
+          const now = new Date();
+          const start = fleet.schedule_start_h * 60 + fleet.schedule_start_m;
+          const end = fleet.schedule_end_h * 60 + fleet.schedule_end_m;
+          const current = now.getHours() * 60 + now.getMinutes();
+          if (start <= end) fleetInSchedule = current >= start && current <= end;
+          else fleetInSchedule = current >= start || current <= end;
+        }
+        return (
         <div key={`fleet-${fleet.id}`} className="mb-6 rounded-lg overflow-hidden border-2"
           style={{ borderColor: hexToRgba(fleet.color, 0.4), backgroundColor: hexToRgba(fleet.color, 0.06) }}>
           <div className="px-4 py-3 flex items-center gap-3 border-b border-[#1c1c2a]"
@@ -370,6 +380,11 @@ export default function DashboardPage() {
             <span className={`text-[10px] px-2 py-0.5 rounded-full border ${fleet.active ? 'bg-green-500/10 text-green-400 border-green-500/30' : 'bg-zinc-500/10 text-zinc-500 border-zinc-500/30'}`}>
               {fleet.active ? 'ACTIVE' : 'INACTIVE'}
             </span>
+            {fleet.schedule_enabled && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border ${fleetInSchedule ? 'bg-zinc-500/10 text-zinc-300 border-zinc-500/30' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'}`}>
+                {fleetInSchedule ? 'IN SCHEDULE' : 'OUTSIDE'}
+              </span>
+            )}
             <span className="text-[10px] px-2 py-0.5 rounded bg-[#6b7280]/10 text-zinc-400 uppercase">{fleet.mode === 'serie' ? 'Serie' : 'Paralelo'}</span>
             <span className="text-[11px] text-zinc-500 ml-auto">{fleet.groups.length} grupos</span>
             {fleet.active ? (
@@ -386,7 +401,8 @@ export default function DashboardPage() {
             {fleet.groups.map((g) => renderGroup(g))}
           </div>
         </div>
-      ))}
+        );
+      })}
 
       {looseGroups.map((g) => renderGroup(g))}
 

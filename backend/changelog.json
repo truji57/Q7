@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.44",
+    "date": "2026-09-01",
+    "description": "Fix grupos bloqueados en modo diario: 'processed' (cuentas ya rotadas) nunca se vaciaba al agotar las cuentas y reset_daily no lo tocaba, asi que el grupo dejaba de operar para siempre hasta reset manual. Ahora processed se reinicia al empezar cada dia (_check_new_day) y ademas hay auto-reparo: si una senal encuentra cuentas PENDING bloqueadas por processed, se limpia y retoma. Anadido badge de horario (IN SCHEDULE/OUTSIDE) en los contenedores de flota del dashboard"
+  },
+  {
     "version": "v0.43",
     "date": "2026-08-31",
     "description": "Log del orquestador a fichero (backend/logs/orchestrator.log, rotativo) para diagnosticar en remoto, y logs de MOTIVO en todos los puntos de decision: senal con grupos destino, grupo no activo/fuera de horario/sin cuentas habilitadas/sin PENDING disponible (con estados), MXP alcanzado, flotas inactivas, vias legacy y test manual"

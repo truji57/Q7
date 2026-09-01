@@ -34,6 +34,7 @@ class OrchestratorEngine:
 
         self.group_state: dict[int, dict] = {}
         self.fleet_state: dict[int, dict] = {}
+        self._today: date = date.today()
         self.last_signal_time: str = ""
         self.signal_log: list[str] = []
         self.mt5_connected: bool = False
@@ -124,6 +125,19 @@ class OrchestratorEngine:
             return start <= current <= end
         else:
             return current >= start or current <= end
+
+    def _check_new_day(self):
+        """Al cambiar el dia, reinicia la rotacion (processed) de todos los grupos.
+        En modo diario 'processed' nunca se vacia al agotar las cuentas y, como
+        reset_daily() no toca este estado en memoria, el grupo quedaba bloqueado
+        para siempre. Al empezar el dia se limpia y puede retomar."""
+        today = date.today()
+        if today != self._today:
+            self._today = today
+            for state in self.group_state.values():
+                state["processed"] = []
+                state.pop("active_account_id", None)
+            log.info("Nuevo día: rotación (processed) de grupos reiniciada")
 
     def activate_group(self, group_id: int):
         with self._lock:
@@ -359,6 +373,7 @@ class OrchestratorEngine:
             try:
                 svc = AccountService(db)
                 svc.reset_daily()
+                self._check_new_day()
 
                 targets = self._signal_targets(db, svc)
                 if not targets:
@@ -413,9 +428,19 @@ class OrchestratorEngine:
                     processed = state.get("processed", [])
                     target = next((a for a in enabled if a.id not in processed and a.status == "PENDING"), None)
                     if not target:
-                        statuses = {a.status for a in enabled}
-                        log.info(f"Group {active_group.id} '{active_group.name}': {direction_str} ignorado, sin cuenta PENDING disponible (estados={statuses} processed={processed})")
-                        continue
+                        # Auto-reparo: si hay cuentas PENDING pero todas estan en processed
+                        # (grupo bloqueado por no limpiarse la rotacion en modo diario),
+                        # vaciar processed y reintentar una vez.
+                        pending_ids = [a.id for a in enabled if a.status == "PENDING"]
+                        if pending_ids:
+                            state["processed"] = []
+                            self.group_state[active_group.id] = state
+                            target = next((a for a in enabled if a.status == "PENDING"), None)
+                            log.info(f"Group {active_group.id} '{active_group.name}': rotacion bloqueada, se limpio processed y se retoma con {target.name if target else '?'} (PENDING={pending_ids})")
+                        if not target:
+                            statuses = {a.status for a in enabled}
+                            log.info(f"Group {active_group.id} '{active_group.name}': {direction_str} ignorado, sin cuenta PENDING disponible (estados={statuses} processed={state.get('processed', [])})")
+                            continue
 
                     # Safety: solo UN TRADING por grupo
                     for a in enabled:
@@ -532,6 +557,7 @@ class OrchestratorEngine:
             try:
                 svc = AccountService(db)
                 svc.reset_daily()
+                self._check_new_day()
 
                 for group_id, state in list(self.group_state.items()):
                     group = db.query(Group).filter(Group.id == group_id).first()
@@ -888,6 +914,7 @@ class OrchestratorEngine:
 
     def _sync_balances(self, db):
         """Lee el status del AddOn y actualiza balances/posiciones en DB. Tambien cierra si TP/SL tocado"""
+        self._check_new_day()
         files = sorted(glob.glob(os.path.join(self.status_path, "status_*.json")), reverse=True)
         if not files:
             return
