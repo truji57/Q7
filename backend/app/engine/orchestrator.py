@@ -1156,6 +1156,23 @@ class OrchestratorEngine:
                     self._add_log(f"{name}: cierre por fin de tramo horario del grupo → posicion cerrada",
                                   category="CYCLE", account=name)
 
+            # GARANTIA INVIOLABLE: ninguna cuenta puede tener posiciones abiertas si
+            # NO esta en estado activo (PENDING/TRADING). Cubre TP_DIA/SL_DIA/TP_RONDA/
+            # SL_RONDA/TP_GLOBAL/SL_GLOBAL y cualquier otro estado (incl. cuentas
+            # deshabilitadas). Si se detecta posicion en estado no activo, se cierra;
+            # al reintentar cada pasada, se auto-repara aunque el cierre anterior se
+            # perdiera por la guarda anti-duplicado de 10s.
+            if pos_list and acc.status not in ("PENDING", "TRADING"):
+                if datetime.now().timestamp() - self._last_close_time.get(name, 0) >= 10:
+                    self._write_trade(name, "", "", 0, 0, 0, close_all=True)
+                    self._last_close_time[name] = datetime.now().timestamp()
+                    if cycle_pnl is not None:
+                        self._record_close(db, acc, cycle_pnl, "GUARD")
+                        self._cycle_start_realized.pop(name, None)
+                        self._cycle_start_ts.pop(name, None)
+                    self._add_log(f"{name}: GARANTIA: posicion abierta con estado '{acc.status}' → cerrada",
+                                  category="CYCLE", account=name)
+
             # If account was TP/SL and position is now closed, rotate
             if not pos_list and acc.status in ("TP_RONDA", "SL_RONDA", "TP_DIA", "SL_DIA", "TP_GLOBAL", "SL_GLOBAL", "TP_TOUCHED", "SL_TOUCHED"):
                 # Migrar status antiguo al nuevo

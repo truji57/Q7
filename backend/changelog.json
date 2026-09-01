@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.45",
+    "date": "2026-09-01",
+    "description": "Blindaje: garantia inviolable en el orquestador — ninguna cuenta puede tener posiciones abiertas si su estado NO es PENDING/TRADING (TP_DIA/SL_DIA/TP_RONDA/SL_RONDA/TP_GLOBAL/SL_GLOBAL/deshabilitada, etc.). Si se detecta, se cierra automaticamente (reintentando cada pasada aunque el cierre previo se perdiera por la guarda de 10s). Motivo GUARD en stats"
+  },
+  {
     "version": "v0.44",
     "date": "2026-09-01",
     "description": "Fix grupos bloqueados en modo diario: 'processed' (cuentas ya rotadas) nunca se vaciaba al agotar las cuentas y reset_daily no lo tocaba, asi que el grupo dejaba de operar para siempre hasta reset manual. Ahora processed se reinicia al empezar cada dia (_check_new_day) y ademas hay auto-reparo: si una senal encuentra cuentas PENDING bloqueadas por processed, se limpia y retoma. Anadido badge de horario (IN SCHEDULE/OUTSIDE) en los contenedores de flota del dashboard"
