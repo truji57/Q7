@@ -56,6 +56,7 @@ export const api = {
     request<any>(`/stats/accounts/${id}/equity${qs({ bucket, from, to })}`),
   getStatsGroup: (id: number, from?: string, to?: string) => request<any>(`/stats/groups/${id}${qs({ from, to })}`),
   getStatsPresets: (from?: string, to?: string) => request<any[]>(`/stats/presets${qs({ from, to })}`),
+  resetStats: () => request<any>('/stats/reset', { method: 'POST' }),
 
   // History
   getHistoryTrades: () => request<any[]>('/history/trades'),

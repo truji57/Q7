@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.46",
+    "date": "2026-09-09",
+    "description": "Botón Resetear stats en la página Stats: endpoint POST /stats/reset que borra TODAS las estadisticas (equity_snapshots, trade_closes, config_snapshots) con modal de confirmacion en el frontend explicando que es irreversible"
+  },
+  {
     "version": "v0.45",
     "date": "2026-09-01",
     "description": "Blindaje: garantia inviolable en el orquestador — ninguna cuenta puede tener posiciones abiertas si su estado NO es PENDING/TRADING (TP_DIA/SL_DIA/TP_RONDA/SL_RONDA/TP_GLOBAL/SL_GLOBAL/deshabilitada, etc.). Si se detecta, se cierra automaticamente (reintentando cada pasada aunque el cierre previo se perdiera por la guarda de 10s). Motivo GUARD en stats"

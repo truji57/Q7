@@ -167,6 +167,8 @@ export default function StatisticsPage() {
   const [groupStats, setGroupStats] = useState<GroupStats | null>(null);
   const [presets, setPresets] = useState<PresetStats[]>([]);
   const [loading, setLoading] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const params = useMemo(() => rangeParams(range), [range]);
 
@@ -187,7 +189,7 @@ export default function StatisticsPage() {
     } finally { setLoading(false); }
   }, [params]);
 
-  useEffect(() => { if (tab === 'account' || tab === 'group') loadSummary(); }, [tab, loadSummary]);
+  useEffect(() => { if (tab === 'account' || tab === 'group') loadSummary(); }, [tab, loadSummary, reloadKey]);
 
   useEffect(() => {
     if (tab !== 'account' || accountId == null) return;
@@ -205,7 +207,7 @@ export default function StatisticsPage() {
       } catch {} finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [tab, accountId, params, range]);
+  }, [tab, accountId, params, range, reloadKey]);
 
   useEffect(() => {
     if (tab !== 'group' || groupId == null) return;
@@ -218,7 +220,7 @@ export default function StatisticsPage() {
       } catch {} finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [tab, groupId, params]);
+  }, [tab, groupId, params, reloadKey]);
 
   useEffect(() => {
     if (tab !== 'presets') return;
@@ -231,7 +233,7 @@ export default function StatisticsPage() {
       } catch {} finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [tab, params]);
+  }, [tab, params, reloadKey]);
 
   const selected = accountId != null ? accRows.find((r) => r.account_id === accountId) : undefined;
   const detailNet = detail?.net_pnl ?? 0;
@@ -292,6 +294,12 @@ export default function StatisticsPage() {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setConfirmReset(true)}
+            className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-md text-[11px] font-semibold hover:bg-red-500/20"
+          >
+            Resetear stats
+          </button>
         </div>
       </div>
 
@@ -461,6 +469,38 @@ export default function StatisticsPage() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {confirmReset && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setConfirmReset(false)}>
+          <div className="bg-[#151520] border border-[#2a2a3a] rounded-lg p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-zinc-200 mb-2">Resetear estadísticas</h3>
+            <p className="text-xs text-zinc-400 mb-2">
+              Se van a borrar <span className="text-red-400 font-semibold">TODOS</span> los datos de estadísticas:
+            </p>
+            <ul className="text-xs text-zinc-400 space-y-1 mb-4 list-disc list-inside">
+              <li>Snapshots de equity (curvas)</li>
+              <li>Cierres de ciclo / trades</li>
+              <li>Snapshots de presets (configs usadas)</li>
+            </ul>
+            <p className="text-xs text-amber-400 mb-4">
+              Esta acción es <span className="font-semibold">IRREVERSIBLE</span>. Los datos se empiezan a acumular de nuevo al operar.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirmReset(false)} className="px-4 py-2 text-xs text-zinc-400 bg-zinc-700/20 border border-zinc-600/30 rounded hover:bg-zinc-700/40">Cancelar</button>
+              <button onClick={async () => {
+                setConfirmReset(false);
+                setLoading(true);
+                try {
+                  await api.resetStats();
+                  setAccRows([]); setDetail(null); setEquity([]); setGroupStats(null); setPresets([]);
+                  setReloadKey((k) => k + 1);
+                } catch (e: any) { alert('Error al resetear: ' + e.message); }
+                finally { setLoading(false); }
+              }} className="px-4 py-2 text-xs text-white bg-red-600/80 rounded font-semibold hover:bg-red-600">Resetear</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

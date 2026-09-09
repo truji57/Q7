@@ -556,6 +556,19 @@ def stats_presets(from_dt: datetime | None = Query(None, alias="from"),
     return st.preset_summary(from_dt, to_dt)
 
 
+@router.post("/stats/reset")
+def stats_reset(db: Session = Depends(get_db)):
+    """Borra TODAS las estadisticas (equity_snapshots, trade_closes, config_snapshots)."""
+    from app.models.account import EquitySnapshot, TradeClose, ConfigSnapshot
+    counts = {
+        "equity_snapshots": db.query(EquitySnapshot).delete(),
+        "trade_closes": db.query(TradeClose).delete(),
+        "config_snapshots": db.query(ConfigSnapshot).delete(),
+    }
+    db.commit()
+    return {"ok": True, "cleared": counts}
+
+
 # ========== HISTORY ==========
 
 @router.get("/history/trades")
