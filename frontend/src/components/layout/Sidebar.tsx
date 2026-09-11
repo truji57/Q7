@@ -20,7 +20,7 @@ export default function Sidebar() {
     <>
       <aside className="w-56 bg-[#0e0e18] border-r border-[#1c1c2a] flex-col shrink-0 hidden md:flex">
         <div className="px-5 py-4 border-b border-[#1c1c2a]">
-          <img src="/nexxo_icon.png?v=4" alt="Nexxo" className="w-48 h-48 object-contain mb-2 mx-auto" />
+          <img src="/owl_logo.png?v=1" alt="Nexxo" className="w-48 h-48 object-contain mb-2 mx-auto" />
           <h1 className="text-lg font-bold tracking-[.25em] text-zinc-300">Nexxo</h1>
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-zinc-600">TRADING ENGINE</span>

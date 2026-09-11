@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.47",
+    "date": "2026-09-09",
+    "description": "Nuevo logo en el sidebar (owl_logo.png) para probar, añadido a frontend/public y usado en Sidebar"
+  },
+  {
     "version": "v0.46",
     "date": "2026-09-09",
     "description": "Botón Resetear stats en la página Stats: endpoint POST /stats/reset que borra TODAS las estadisticas (equity_snapshots, trade_closes, config_snapshots) con modal de confirmacion en el frontend explicando que es irreversible"
