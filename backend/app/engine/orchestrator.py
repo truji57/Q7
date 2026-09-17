@@ -424,15 +424,20 @@ class OrchestratorEngine:
                             sent_any = True
                             continue
 
-                    # 4) Rotacion: siguiente PENDING no procesado
+                    # 4) Rotacion: siguiente PENDING no procesado (en turnos: cola simple sin processed)
+                    is_turnos = active_group.reset_mode == "turnos"
                     processed = state.get("processed", [])
-                    target = next((a for a in enabled if a.id not in processed and a.status == "PENDING"), None)
+                    if is_turnos:
+                        enabled_sorted = sorted(enabled, key=lambda a: (a.order_index, a.id))
+                        target = self._pick_next_turnos(enabled_sorted, active_id)
+                    else:
+                        target = next((a for a in enabled if a.id not in processed and a.status == "PENDING"), None)
                     if not target:
-                        # Auto-reparo: si hay cuentas PENDING pero todas estan en processed
-                        # (grupo bloqueado por no limpiarse la rotacion en modo diario),
+                        # Auto-reparo (solo no-turnos): si hay cuentas PENDING pero todas estan en
+                        # processed (grupo bloqueado por no limpiarse la rotacion en modo diario),
                         # vaciar processed y reintentar una vez.
                         pending_ids = [a.id for a in enabled if a.status == "PENDING"]
-                        if pending_ids:
+                        if pending_ids and not is_turnos:
                             state["processed"] = []
                             self.group_state[active_group.id] = state
                             target = next((a for a in enabled if a.status == "PENDING"), None)
@@ -442,15 +447,19 @@ class OrchestratorEngine:
                             log.info(f"Group {active_group.id} '{active_group.name}': {direction_str} ignorado, sin cuenta PENDING disponible (estados={statuses} processed={state.get('processed', [])})")
                             continue
 
-                    # Safety: solo UN TRADING por grupo
+                    # Safety: solo UN TRADING por grupo (y en turnos se normalizan los SL_TURNO a PENDING)
+                    if is_turnos:
+                        self._turnos_count_round(db, active_group.id, active_id, target)
                     for a in enabled:
                         if a.status == "TRADING" and a.id != target.id:
                             a.status = "PENDING"
-                    if active_id and active_id not in processed:
+                        elif is_turnos and a.id != target.id and a.status == "SL_TURNO":
+                            a.status = "PENDING"
+                    if active_id and active_id not in processed and not is_turnos:
                         processed.append(active_id)
                     target.status = "TRADING"
                     state["active_account_id"] = target.id
-                    state["processed"] = processed
+                    state["processed"] = [] if is_turnos else processed
                     self.group_state[active_group.id] = state
                     db.commit()
                     log.info(f"Group {active_group.id}: -> {target.name}")
@@ -632,6 +641,19 @@ class OrchestratorEngine:
 
     def _next_account(self, group_id: int, state: dict, db):
         active_id = state.get("active_account_id")
+
+        # NUNCA rotar ni resetear mientras alguna cuenta tenga posicion abierta:
+        # esperar a que la cuenta activa se cierre de verdad antes de activar la siguiente.
+        if self._group_has_open_positions(db, group_id):
+            log.info(f"Group {group_id}: rotacion aplazada, posiciones aun abiertas")
+            db.commit()
+            return
+
+        group = db.query(Group).filter(Group.id == group_id).first()
+        if group and (group.reset_mode or "diario") == "turnos":
+            self._advance_turnos(group_id, state, db, active_id)
+            return
+
         state["processed"] = state.get("processed", []) + [active_id]
 
         accounts = db.query(Account).filter(
@@ -642,14 +664,6 @@ class OrchestratorEngine:
             (a for a in accounts if a.id not in state["processed"] and a.status == "PENDING"),
             None
         )
-
-        # NUNCA rotar ni resetear mientras alguna cuenta tenga posicion abierta:
-        # esperar a que la cuenta activa se cierre de verdad antes de activar la siguiente.
-        if self._group_has_open_positions(db, group_id):
-            log.info(f"Group {group_id}: rotacion aplazada, posiciones aun abiertas")
-            state["processed"] = state["processed"][:-1]
-            db.commit()
-            return
 
         if next_acc:
             # Reset all TRADING accounts in this group (safety)
@@ -703,6 +717,71 @@ class OrchestratorEngine:
 
             # Flota en serie: avanzar al siguiente grupo miembro
             self._advance_fleet_after_group_done(db, group_id)
+
+    def _pick_next_turnos(self, accounts, current_id):
+        """Siguiente cuenta de la cola turnos tras current_id (circular). Elegibles:
+        habilitadas con estado PENDING o SL_TURNO (las que cedieron el turno vuelven a la cola)."""
+        if not accounts:
+            return None
+        ids = [a.id for a in accounts]
+        try:
+            idx = ids.index(current_id) if current_id is not None else -1
+        except ValueError:
+            idx = -1
+        for off in range(1, len(accounts) + 1):
+            cand = accounts[(idx + off) % len(accounts)]
+            if cand.status in ("PENDING", "SL_TURNO"):
+                return cand
+        for a in accounts:
+            if a.status in ("PENDING", "SL_TURNO"):
+                return a
+        return None
+
+    def _turnos_count_round(self, db, group_id, active_id, nxt):
+        """En modo turnos, nueva ronda cuando la cola da la vuelta completa (wrap:
+        la siguiente cuenta tiene order_index menor que la actual)."""
+        if active_id is None or nxt is None:
+            return
+        cur = db.query(Account).filter(Account.id == active_id).first()
+        if not cur:
+            return
+        if nxt.order_index < cur.order_index:
+            for a in db.query(Account).filter(Account.group_id == group_id).all():
+                a.round_num = (a.round_num or 0) + 1
+
+    def _advance_turnos(self, group_id: int, state: dict, db, active_id):
+        """Modo turnos: la cuenta actual cede su turno (SL, o TPD/SLD, o TPG/SLG) y se
+        activa la siguiente cuenta habilitada de la cola (orden circular). Las cuentas
+        que esperan (PENDING o SL_TURNO) vuelven/normalizan a PENDING."""
+        accounts = db.query(Account).filter(
+            Account.group_id == group_id, Account.enabled == True
+        ).order_by(Account.order_index, Account.id).all()
+
+        if not accounts:
+            state.pop("active_account_id", None)
+            log.info(f"Group {group_id}: turnos sin cuentas habilitadas, en espera")
+            db.commit()
+            return
+
+        nxt = self._pick_next_turnos(accounts, active_id)
+        if nxt is None:
+            state.pop("active_account_id", None)
+            log.info(f"Group {group_id}: turnos sin cuenta elegible, en espera (reset_daily las revierte)")
+            db.commit()
+            return
+
+        self._turnos_count_round(db, group_id, active_id, nxt)
+
+        for a in accounts:
+            if a.id == nxt.id:
+                a.status = "TRADING"
+            else:
+                # cola limpia: las que esperan (PENDING o SL_TURNO) -> PENDING
+                a.status = "PENDING"
+        state["active_account_id"] = nxt.id
+        state["processed"] = []  # turnos no usa processed
+        db.commit()
+        log.info(f"Group {group_id}: turnos -> {nxt.name}")
 
     def _advance_fleet_after_group_done(self, db, group_id: int):
         """Si el grupo pertenece a una flota en serie, avanza al siguiente miembro activo."""
@@ -986,6 +1065,14 @@ class OrchestratorEngine:
             except:
                 pass
 
+        # Modo de reinicio por grupo (para ramas turnos, etc.)
+        group_modes: dict[int, str] = {}
+        try:
+            for g in db.query(Group).all():
+                group_modes[g.id] = g.reset_mode or "diario"
+        except:
+            pass
+
         for nt8 in nt8_accounts:
             name = nt8.get("name", "")
             if not name:
@@ -993,6 +1080,8 @@ class OrchestratorEngine:
             acc = db.query(Account).filter(Account.nt8_account == name).first()
             if not acc:
                 continue
+
+            mode = group_modes.get(acc.group_id, "diario")
 
             db.refresh(acc)  # Live edits from dashboard
 
@@ -1104,7 +1193,7 @@ class OrchestratorEngine:
                 self._add_log(f"{name}: DAILY SL -${abs(acc.daily_pnl):.0f} ≥ -${acc.sld:.0f} → pausada hoy", category="ROTATION", account=name)
                 log.info(f"SLD {name}: daily={acc.daily_pnl:.0f} <= -{acc.sld}")
 
-            elif acc.pdpt and acc.pdpt > 0 and acc.round_pnl >= acc.pdpt and acc.status in ("PENDING", "TRADING"):
+            elif acc.pdpt and acc.pdpt > 0 and mode != "turnos" and acc.round_pnl >= acc.pdpt and acc.status in ("PENDING", "TRADING"):
                 acc.status = "TP_RONDA"
                 self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                 self._last_close_time[name] = datetime.now().timestamp()
@@ -1115,7 +1204,7 @@ class OrchestratorEngine:
                 self._add_log(f"{name}: ROUND TP +${acc.round_pnl:.0f} ≥ +${acc.pdpt:.0f} → rotating", category="ROTATION", account=name)
                 log.info(f"TPR {name}: round={acc.round_pnl:.0f} >= {acc.pdpt}")
 
-            elif acc.pdll and acc.pdll > 0 and acc.round_pnl <= -acc.pdll and acc.status in ("PENDING", "TRADING"):
+            elif acc.pdll and acc.pdll > 0 and mode != "turnos" and acc.round_pnl <= -acc.pdll and acc.status in ("PENDING", "TRADING"):
                 acc.status = "SL_RONDA"
                 self._write_trade(name, "", "", 0, 0, 0, close_all=True)
                 self._last_close_time[name] = datetime.now().timestamp()
@@ -1140,7 +1229,12 @@ class OrchestratorEngine:
                 self._record_close(db, acc, cycle_pnl, "SLC")
                 self._cycle_start_realized.pop(name, None)
                 self._cycle_start_ts.pop(name, None)
-                self._add_log(f"{name}: CYCLE SL -${abs(cycle_pnl):.0f} ≥ -${acc.slc:.0f} → closed", category="CYCLE", account=name)
+                if mode == "turnos":
+                    # En modo turnos el SL de ciclo rota a la siguiente cuenta de la cola
+                    acc.status = "SL_TURNO"
+                    self._add_log(f"{name}: CYCLE SL -${abs(cycle_pnl):.0f} ≥ -${acc.slc:.0f} → pasa el turno", category="CYCLE", account=name)
+                else:
+                    self._add_log(f"{name}: CYCLE SL -${abs(cycle_pnl):.0f} ≥ -${acc.slc:.0f} → closed", category="CYCLE", account=name)
 
             # Fin de tramo horario: si la config lo pide, cerrar las posiciones abiertas
             # de las cuentas de grupos que ya estan fuera de su horario. Garantia total:
@@ -1174,7 +1268,7 @@ class OrchestratorEngine:
                                   category="CYCLE", account=name)
 
             # If account was TP/SL and position is now closed, rotate
-            if not pos_list and acc.status in ("TP_RONDA", "SL_RONDA", "TP_DIA", "SL_DIA", "TP_GLOBAL", "SL_GLOBAL", "TP_TOUCHED", "SL_TOUCHED"):
+            if not pos_list and acc.status in ("TP_RONDA", "SL_RONDA", "SL_TURNO", "TP_DIA", "SL_DIA", "TP_GLOBAL", "SL_GLOBAL", "TP_TOUCHED", "SL_TOUCHED"):
                 # Migrar status antiguo al nuevo
                 if acc.status == "TP_TOUCHED": acc.status = "TP_RONDA"
                 if acc.status == "SL_TOUCHED": acc.status = "SL_RONDA"
@@ -1183,7 +1277,7 @@ class OrchestratorEngine:
                     # Reconstruir state tras reinicio del backend
                     # Buscar TRADING o, si no hay, la ultima cuenta que acabo de tocar
                     active = next((a for a in db.query(Account).filter(
-                        Account.group_id == acc.group_id, Account.status.in_(["TRADING", "TP_RONDA", "SL_RONDA", "TP_DIA", "SL_DIA", "TP_GLOBAL", "SL_GLOBAL"])
+                        Account.group_id == acc.group_id, Account.status.in_(["TRADING", "TP_RONDA", "SL_RONDA", "SL_TURNO", "TP_DIA", "SL_DIA", "TP_GLOBAL", "SL_GLOBAL"])
                     ).order_by(Account.order_index).all()), None)
                     if active:
                         state = {"active_account_id": active.id, "processed": []}

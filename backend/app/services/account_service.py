@@ -55,6 +55,12 @@ class AccountService:
         if not (data.get("name") or "").strip():
             data["name"] = (data.get("nt8_account") or "").strip() or "?"
 
+        # Orden de la cola/turnos: siguiente indice del grupo
+        last = (self.db.query(Account)
+                .filter(Account.group_id == group_id)
+                .order_by(Account.order_index.desc(), Account.id.desc()).first())
+        data.setdefault("order_index", (last.order_index if last else 0) + 1)
+
         defaults = {
             "ct": g.default_ct, "max_positions": g.default_max_positions,
             "tpc": g.default_tpc, "slc": g.default_slc,

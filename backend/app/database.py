@@ -177,6 +177,20 @@ def _run_migrations():
                 except:
                     pass
 
+    # Backfill order_index secuencial por grupo (orden real de la cola/rotacion/turnos)
+    if "accounts" in inspector.get_table_names() and "groups" in inspector.get_table_names():
+        try:
+            rows = conn.execute(text("SELECT id, group_id, order_index FROM accounts ORDER BY group_id, id")).fetchall()
+            seq: dict = {}
+            for rid, gid, oi in rows:
+                n = seq.get(gid, 0) + 1
+                seq[gid] = n
+                if oi != n:
+                    conn.execute(text("UPDATE accounts SET order_index = :n WHERE id = :rid"), {"n": n, "rid": rid})
+            conn.commit()
+        except:
+            pass
+
     conn.commit()
     conn.close()
 

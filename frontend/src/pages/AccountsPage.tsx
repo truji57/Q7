@@ -31,6 +31,7 @@ export default function AccountsPage() {
   const [modal, setModal] = useState<ModalState>(null);
 
   const nt8Accounts = useStore((s) => s.state?.nt8_accounts || []);
+  const nt8Connected = useStore((s) => s.state?.nt8_connected || false);
 
   const load = async () => {
     try { const g = await api.getGroups(); setGroups(g); } catch {}
@@ -59,9 +60,17 @@ export default function AccountsPage() {
     setShowGroupForm(true);
   };
 
-  const deleteGroup = async (id: number) => {
-    if (!confirm('Delete this group and all its accounts?')) return;
-    try { await api.deleteGroup(id); load(); } catch (e: any) { alert(e.message); }
+const deleteGroup = (id: number) => {
+    setModal({
+      kind: 'confirm',
+      title: 'Eliminar grupo',
+      message: '¿Seguro que quieres eliminar este grupo y TODAS sus cuentas? Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      onConfirm: async () => {
+        try { await api.deleteGroup(id); load(); }
+        catch (e: any) { setModal({ kind: 'info', title: 'Error', message: e.message }); }
+      },
+    });
   };
 
   const updateGroupField = async (id: number, field: string, value: any) => {
@@ -136,6 +145,7 @@ export default function AccountsPage() {
             <option value="manual">Manual</option>
             <option value="diario">Diario</option>
             <option value="continuo">Continuo</option>
+            <option value="turnos">Turnos</option>
           </select>
         </div>
       </div>
@@ -275,6 +285,11 @@ export default function AccountsPage() {
                         </option>
                       ))}
                   </select>
+                  {!nt8Connected && (
+                    <p className="text-[10px] text-amber-400/90 mt-1">
+                      NT8 no conectado — el listado muestra las cuentas del último estado conocido.
+                    </p>
+                  )}
                 </div>
                 <button onClick={saveAccount} className="px-3 py-0.5 bg-[#6b7280] text-white rounded text-[10px]"><Save size={11} /></button>
                 <button onClick={() => setShowAccountForm(null)} className="px-3 py-0.5 bg-[#1a1a2a] text-zinc-400 rounded text-[10px]"><X size={11} /></button>

@@ -9,6 +9,7 @@ const STATUS_COLORS: Record<string, string> = {
   TRADING: 'text-blue-400',
   TP_RONDA: 'text-green-400',
   SL_RONDA: 'text-red-400',
+  SL_TURNO: 'text-orange-400',
   TP_DIA: 'text-green-400',
   SL_DIA: 'text-red-400',
   TP_TOUCHED: 'text-green-400',
@@ -167,7 +168,7 @@ export default function DashboardPage() {
             inSchedule = current >= start || current <= end;
           }
         }
-          const resetLabel = group.reset_mode === 'manual' ? 'Reinicio manual' : group.reset_mode === 'continuo' ? 'Continuo' : 'Diario';
+          const resetLabel = group.reset_mode === 'manual' ? 'Reinicio manual' : group.reset_mode === 'continuo' ? 'Continuo' : group.reset_mode === 'turnos' ? 'Turnos' : 'Diario';
           const labelParts = [
             group.active ? 'ACTIVO' : 'INACTIVO',
             group.direction === 'BOTH' ? 'Ambas' : group.direction,
@@ -296,7 +297,7 @@ export default function DashboardPage() {
                       <tr key={acc.id} className={`border-b border-[#111122] hover:bg-[#111122]/50 ${!acc.enabled ? 'opacity-40' : ''}`}>
                         <td className="py-2 px-2">
                           <span className={`text-[10px] font-semibold ${STATUS_COLORS[acc.status] || 'text-zinc-500'}`}>
-                            {acc.status === 'TP_RONDA' ? 'TPR ✓' : acc.status === 'SL_RONDA' ? 'SLR ✗' : acc.status === 'TP_DIA' ? 'TPD ⏸' : acc.status === 'SL_DIA' ? 'SLD ⏸' : acc.status === 'TP_GLOBAL' ? 'TPG ✓' : acc.status === 'SL_GLOBAL' ? 'SLG ✗' : acc.status === 'TRADING' ? 'ACTIVE' : acc.status}
+                            {acc.status === 'TP_RONDA' ? 'TPR ✓' : acc.status === 'SL_RONDA' ? 'SLR ✗' : acc.status === 'SL_TURNO' ? 'SL ⟳' : acc.status === 'TP_DIA' ? 'TPD ⏸' : acc.status === 'SL_DIA' ? 'SLD ⏸' : acc.status === 'TP_GLOBAL' ? 'TPG ✓' : acc.status === 'SL_GLOBAL' ? 'SLG ✗' : acc.status === 'TRADING' ? 'ACTIVE' : acc.status}
                           </span>
                         </td>
                         <td className="py-2 px-2">

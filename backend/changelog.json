@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.48",
+    "date": "2026-09-17",
+    "description": "Sistema de turnos (reset_mode turnos): cola circular de cuentas donde el SL de ciclo rota a la siguiente cuenta (TPC se queda con la racha), TPR/SLR ignorados, estado SL_TURNO, conteo de rondas por pasada completa. Fix order_index (create_account los asigna + migracion backfill 1..N). Normalizacion SL_TURNO->PENDING en la cola. Modal propio de la app al eliminar grupo y aviso cuando NT8 esta apagado en el selector de cuentas"
+  },
+  {
     "version": "v0.47",
     "date": "2026-09-09",
     "description": "Nuevo logo en el sidebar (owl_logo.png) para probar, añadido a frontend/public y usado en Sidebar"
