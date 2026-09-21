@@ -2,7 +2,7 @@
 Q7 Backend - Models: Group + Account
 """
 from datetime import datetime, date
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Date, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -41,7 +41,7 @@ class Group(Base):
     created_at = Column(DateTime, default=datetime.now)
 
     accounts = relationship("Account", back_populates="group", cascade="all, delete-orphan")
-    fleet_link = relationship("FleetGroup", back_populates="group", uselist=False, cascade="all, delete-orphan")
+    fleet_links = relationship("FleetGroup", back_populates="group", cascade="all, delete-orphan")
 
 
 class Account(Base):
@@ -211,13 +211,14 @@ class Fleet(Base):
 
 
 class FleetGroup(Base):
-    """Membresia: un grupo pertenece a una flota (group_id UNIQUE → maximo una flota)."""
+    """Membresia: un grupo puede estar en varias flotas (UNIQUE compuesto fleet_id+group_id)."""
     __tablename__ = "fleet_groups"
+    __table_args__ = (UniqueConstraint("fleet_id", "group_id", name="uq_fleet_groups"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     fleet_id = Column(Integer, ForeignKey("fleets.id"), nullable=False)
-    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False, unique=True)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False)
     order_index = Column(Integer, default=0)
 
     fleet = relationship("Fleet", back_populates="members")
-    group = relationship("Group", back_populates="fleet_link")
+    group = relationship("Group", back_populates="fleet_links")

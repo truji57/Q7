@@ -39,8 +39,7 @@ export default function FleetsPage() {
 
   useEffect(() => { load(); }, []);
 
-  const fleetGroupIds = new Set(fleets.flatMap((f) => f.groups.map((g) => g.id)));
-  const availableGroups = groups.filter((g) => !fleetGroupIds.has(g.id));
+  const availableGroups = (fleet: Fleet) => groups.filter((g) => !fleet.groups.some((m) => m.id === g.id));
 
   const saveFleet = async () => {
     try {
@@ -242,7 +241,7 @@ export default function FleetsPage() {
                     onChange={(e) => setAddGroupId(Number(e.target.value))}
                   >
                     <option value={0}>Select group...</option>
-                    {availableGroups.map((g) => (
+                    {availableGroups(f).map((g) => (
                       <option key={g.id} value={g.id}>{g.name}</option>
                     ))}
                   </select>

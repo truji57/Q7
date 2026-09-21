@@ -232,17 +232,19 @@ class AccountService:
         return True
 
     def add_group_to_fleet(self, fleet_id: int, group_id: int) -> str | None:
-        """Devuelve None si ok (o ya estaba en esta flota), o un mensaje de error."""
+        """Devuelve None si ok (o el grupo ya estaba en ESTA flota), o un mensaje de error.
+        Un grupo puede estar en varias flotas; solo no puede repetirse dentro de la misma."""
         fleet = self.db.query(Fleet).filter(Fleet.id == fleet_id).first()
         if not fleet: return "Flota no encontrada"
         g = self.db.query(Group).filter(Group.id == group_id).first()
         if not g: return "Grupo no encontrado"
-        if g.fleet_link and g.fleet_link.fleet_id != fleet_id:
-            return "El grupo ya pertenece a otra flota"
-        if not g.fleet_link:
-            order = self.db.query(FleetGroup).filter(FleetGroup.fleet_id == fleet_id).count()
-            self.db.add(FleetGroup(fleet_id=fleet_id, group_id=group_id, order_index=order))
-            self.db.commit()
+        exists = (self.db.query(FleetGroup)
+                  .filter(FleetGroup.fleet_id == fleet_id, FleetGroup.group_id == group_id).first())
+        if exists:
+            return None  # ya estaba en esta flota
+        order = self.db.query(FleetGroup).filter(FleetGroup.fleet_id == fleet_id).count()
+        self.db.add(FleetGroup(fleet_id=fleet_id, group_id=group_id, order_index=order))
+        self.db.commit()
         return None
 
     def remove_group_from_fleet(self, fleet_id: int, group_id: int) -> bool:

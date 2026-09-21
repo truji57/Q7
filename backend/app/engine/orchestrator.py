@@ -337,19 +337,19 @@ class OrchestratorEngine:
                 continue
             if fleet.mode == "paralelo":
                 for m in sorted(fleet.members, key=lambda m: m.order_index):
-                    if m.group.active:
+                    if m.group.active and m.group.id not in fleet_used:
                         targets.append(m.group)
                         fleet_used.add(m.group.id)
             else:  # serie
                 cur = self._fleet_current_group(fleet)
-                if cur and cur.active:
+                if cur and cur.active and cur.id not in fleet_used:
                     targets.append(cur)
                     fleet_used.add(cur.id)
         # Grupos sueltos (sin flota), en orden
         for g in svc.get_all_groups():
-            if g.active and g.id not in fleet_used and not g.fleet_link:
+            if g.active and g.id not in fleet_used and not g.fleet_links:
                 targets.append(g)
-            elif not g.active and not g.fleet_link and any(a.enabled for a in g.accounts):
+            elif not g.active and not g.fleet_links and any(a.enabled for a in g.accounts):
                 log.info(f"Group {g.id} '{g.name}': senal ignorada, grupo NO ACTIVO")
         return targets
 
@@ -784,27 +784,31 @@ class OrchestratorEngine:
         log.info(f"Group {group_id}: turnos -> {nxt.name}")
 
     def _advance_fleet_after_group_done(self, db, group_id: int):
-        """Si el grupo pertenece a una flota en serie, avanza al siguiente miembro activo."""
+        """Si el grupo pertenece a una o varias flotas en serie, avanza en cada una."""
         g = db.query(Group).filter(Group.id == group_id).first()
-        if not g or not g.fleet_link:
+        if not g or not g.fleet_links:
             return
-        fleet = g.fleet_link.fleet
-        if not fleet or fleet.mode != "serie":
-            return
-        members = sorted(fleet.members, key=lambda m: m.order_index)
-        state = self.fleet_state.get(fleet.id) or {}
-        cur_id = state.get("current_group_id") or group_id
-        idx = next((i for i, m in enumerate(members) if m.group.id == cur_id), None)
-        start = (idx + 1) if idx is not None else 0
-        for m in members[start:]:
-            if m.group.active:
-                self.fleet_state[fleet.id] = {"current_group_id": m.group.id}
-                log.info(f"Fleet {fleet.id} (serie): -> group {m.group.id}")
-                self._add_log(f"Fleet {fleet.name}: serie -> {m.group.name}", category="FLEET")
-                return
-        self.fleet_state[fleet.id] = {"current_group_id": None}
-        log.info(f"Fleet {fleet.id} (serie): completada")
-        self._add_log(f"Fleet {fleet.name}: serie completada", category="FLEET")
+        for fl in g.fleet_links:
+            fleet = fl.fleet
+            if not fleet or fleet.mode != "serie":
+                continue
+            members = sorted(fleet.members, key=lambda m: m.order_index)
+            state = self.fleet_state.get(fleet.id) or {}
+            cur_id = state.get("current_group_id") or group_id
+            idx = next((i for i, m in enumerate(members) if m.group.id == cur_id), None)
+            start = (idx + 1) if idx is not None else 0
+            advanced = False
+            for m in members[start:]:
+                if m.group.active:
+                    self.fleet_state[fleet.id] = {"current_group_id": m.group.id}
+                    log.info(f"Fleet {fleet.id} (serie): -> group {m.group.id}")
+                    self._add_log(f"Fleet {fleet.name}: serie -> {m.group.name}", category="FLEET")
+                    advanced = True
+                    break
+            if not advanced:
+                self.fleet_state[fleet.id] = {"current_group_id": None}
+                log.info(f"Fleet {fleet.id} (serie): completada")
+                self._add_log(f"Fleet {fleet.name}: serie completada", category="FLEET")
 
     def _in_schedule(self, group: Group) -> bool:
         if not group.schedule_enabled:

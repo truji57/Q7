@@ -191,6 +191,37 @@ def _run_migrations():
         except:
             pass
 
+    # Fleet: permitir un grupo en VARIAS flotas -> quitar UNIQUE simple de group_id
+    # y aplicar UNIQUE compuesto (fleet_id, group_id). SQLite no soporta DROP UNIQUE,
+    # asi que se reconstruye la tabla copiando los datos.
+    if "fleet_groups" in inspector.get_table_names():
+        try:
+            uniques = [set(ix.get("column_names", [])) for ix in inspector.get_unique_constraints("fleet_groups")]
+            if {"fleet_id", "group_id"} not in uniques:
+                ac = conn.execution_options(isolation_level="AUTOCOMMIT")
+                ac.execute(text("PRAGMA foreign_keys=OFF"))
+                ac.execute(text("ALTER TABLE fleet_groups RENAME TO fleet_groups_legacy"))
+                ac.execute(text("""
+                    CREATE TABLE fleet_groups (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        fleet_id INTEGER NOT NULL,
+                        group_id INTEGER NOT NULL,
+                        order_index INTEGER DEFAULT 0,
+                        CONSTRAINT uq_fleet_groups UNIQUE (fleet_id, group_id),
+                        FOREIGN KEY(fleet_id) REFERENCES fleets (id),
+                        FOREIGN KEY(group_id) REFERENCES groups (id)
+                    )
+                """))
+                ac.execute(text("INSERT INTO fleet_groups (id, fleet_id, group_id, order_index) SELECT id, fleet_id, group_id, order_index FROM fleet_groups_legacy"))
+                ac.execute(text("DROP TABLE fleet_groups_legacy"))
+                ac.execute(text("PRAGMA foreign_keys=ON"))
+        except Exception:
+            try:
+                conn.execute(text("PRAGMA foreign_keys=ON"))
+            except Exception:
+                pass
+            pass
+
     conn.commit()
     conn.close()
 

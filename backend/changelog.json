@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.49",
+    "date": "2026-09-17",
+    "description": "Un grupo puede pertenecer a VARIAS flotas (se quita el UNIQUE simple de group_id y se aplica UNIQUE compuesto fleet_id+group_id para no repetirlo en la misma flota). Migracion SQLite reconstruyendo fleet_groups, Group.fleet_link -> fleet_links (lista), orquestador dedup de objetivos y avance en todas las flotas serie, frontend lista grupos por flota"
+  },
+  {
     "version": "v0.48",
     "date": "2026-09-17",
     "description": "Sistema de turnos (reset_mode turnos): cola circular de cuentas donde el SL de ciclo rota a la siguiente cuenta (TPC se queda con la racha), TPR/SLR ignorados, estado SL_TURNO, conteo de rondas por pasada completa. Fix order_index (create_account los asigna + migracion backfill 1..N). Normalizacion SL_TURNO->PENDING en la cola. Modal propio de la app al eliminar grupo y aviso cuando NT8 esta apagado en el selector de cuentas"
