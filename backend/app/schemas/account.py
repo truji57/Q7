@@ -123,10 +123,10 @@ class GroupUpdate(BaseModel):
     reset_mode: Optional[str] = None
     include_in_fleet: Optional[bool] = None
     schedule_enabled: Optional[bool] = None
-    schedule_start_h: Optional[int] = None
-    schedule_start_m: Optional[int] = None
-    schedule_end_h: Optional[int] = None
-    schedule_end_m: Optional[int] = None
+    schedule_start_h: Optional[int] = Field(default=None, ge=0, le=23)
+    schedule_start_m: Optional[int] = Field(default=None, ge=0, le=59)
+    schedule_end_h: Optional[int] = Field(default=None, ge=0, le=23)
+    schedule_end_m: Optional[int] = Field(default=None, ge=0, le=59)
     default_ct: Optional[int] = None
     default_max_positions: Optional[int] = None
     default_tpc: Optional[float] = None
@@ -168,10 +168,10 @@ class FleetUpdate(BaseModel):
     active: Optional[bool] = None
     color: Optional[str] = None
     schedule_enabled: Optional[bool] = None
-    schedule_start_h: Optional[int] = None
-    schedule_start_m: Optional[int] = None
-    schedule_end_h: Optional[int] = None
-    schedule_end_m: Optional[int] = None
+    schedule_start_h: Optional[int] = Field(default=None, ge=0, le=23)
+    schedule_start_m: Optional[int] = Field(default=None, ge=0, le=59)
+    schedule_end_h: Optional[int] = Field(default=None, ge=0, le=23)
+    schedule_end_m: Optional[int] = Field(default=None, ge=0, le=59)
 
 
 class DashboardState(BaseModel):

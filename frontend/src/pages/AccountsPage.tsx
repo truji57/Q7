@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Save, X, TestTube2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useStore } from '../store';
 import { Group, Account } from '../types';
+import ScheduleInput from '../components/ScheduleInput';
 
 function FormField({ label, value, onChange, type = 'text', min, placeholder }: any) {
   return (
@@ -203,18 +204,14 @@ const deleteGroup = (id: number) => {
             {g.schedule_enabled && (
               <div className="flex items-center gap-2 text-zinc-400 flex-wrap">
                 <span>INICIO</span>
-                <input type="number" className="w-16 text-center text-xs" min={0} max={23} value={g.schedule_start_h}
-                  onChange={(e) => updateGroupField(g.id, 'schedule_start_h', parseInt(e.target.value) || 0)} />
+                <ScheduleInput value={g.schedule_start_h} min={0} max={23} onSave={(v) => updateGroupField(g.id, 'schedule_start_h', v)} className="w-16 text-center text-xs" />
                 <span>:</span>
-                <input type="number" className="w-16 text-center text-xs" min={0} max={59} value={g.schedule_start_m}
-                  onChange={(e) => updateGroupField(g.id, 'schedule_start_m', parseInt(e.target.value) || 0)} />
+                <ScheduleInput value={g.schedule_start_m} min={0} max={59} onSave={(v) => updateGroupField(g.id, 'schedule_start_m', v)} className="w-16 text-center text-xs" />
 
                 <span className="ml-3">FIN</span>
-                <input type="number" className="w-16 text-center text-xs" min={0} max={23} value={g.schedule_end_h}
-                  onChange={(e) => updateGroupField(g.id, 'schedule_end_h', parseInt(e.target.value) || 0)} />
+                <ScheduleInput value={g.schedule_end_h} min={0} max={23} onSave={(v) => updateGroupField(g.id, 'schedule_end_h', v)} className="w-16 text-center text-xs" />
                 <span>:</span>
-                <input type="number" className="w-16 text-center text-xs" min={0} max={59} value={g.schedule_end_m}
-                  onChange={(e) => updateGroupField(g.id, 'schedule_end_m', parseInt(e.target.value) || 0)} />
+                <ScheduleInput value={g.schedule_end_m} min={0} max={59} onSave={(v) => updateGroupField(g.id, 'schedule_end_m', v)} className="w-16 text-center text-xs" />
               </div>
             )}
           </div>

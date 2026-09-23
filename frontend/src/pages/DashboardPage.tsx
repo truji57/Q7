@@ -72,12 +72,16 @@ function EditCell({ value, onSave, prefix, warn, warnTitle }: EditCellProps) {
   );
 }
 
-function BlurInput({ value, onSave, className, ...rest }: { value: number; onSave: (v: number) => void; className?: string; [key: string]: any }) {
+function BlurInput({ value, onSave, className, min, max, ...rest }: { value: number; onSave: (v: number) => void; className?: string; min?: number; max?: number; [key: string]: any }) {
   const [local, setLocal] = useState(String(value));
   const doSave = useCallback(() => {
-    const n = parseFloat(local);
-    if (!isNaN(n) && n !== value) onSave(n);
-  }, [local, value, onSave]);
+    let n = parseFloat(local);
+    if (isNaN(n)) return;
+    if (typeof min === 'number') n = Math.max(min, n);
+    if (typeof max === 'number') n = Math.min(max, n);
+    setLocal(String(n));
+    if (n !== value) onSave(n);
+  }, [local, value, onSave, min, max]);
   return (
     <input
       type="number"

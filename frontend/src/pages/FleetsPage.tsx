@@ -2,6 +2,7 @@ import { useState, useEffect, Fragment } from 'react';
 import { Plus, Pencil, Trash2, Save, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { api } from '../lib/api';
 import { Fleet, Group } from '../types';
+import ScheduleInput from '../components/ScheduleInput';
 
 const FLEET_COLORS = ['#4f8cff', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#ec4899', '#facc15'];
 
@@ -207,18 +208,14 @@ export default function FleetsPage() {
               {f.schedule_enabled && (
                 <div className="flex items-center gap-2 text-zinc-400 flex-wrap">
                   <span>INICIO</span>
-                  <input type="number" className="w-16 text-center text-xs" min={0} max={23} value={f.schedule_start_h}
-                    onChange={(e) => updateFleetField(f.id, 'schedule_start_h', parseInt(e.target.value) || 0)} />
+                  <ScheduleInput value={f.schedule_start_h} min={0} max={23} onSave={(v) => updateFleetField(f.id, 'schedule_start_h', v)} className="w-16 text-center text-xs" />
                   <span>:</span>
-                  <input type="number" className="w-16 text-center text-xs" min={0} max={59} value={f.schedule_start_m}
-                    onChange={(e) => updateFleetField(f.id, 'schedule_start_m', parseInt(e.target.value) || 0)} />
+                  <ScheduleInput value={f.schedule_start_m} min={0} max={59} onSave={(v) => updateFleetField(f.id, 'schedule_start_m', v)} className="w-16 text-center text-xs" />
 
                   <span className="ml-3">FIN</span>
-                  <input type="number" className="w-16 text-center text-xs" min={0} max={23} value={f.schedule_end_h}
-                    onChange={(e) => updateFleetField(f.id, 'schedule_end_h', parseInt(e.target.value) || 0)} />
+                  <ScheduleInput value={f.schedule_end_h} min={0} max={23} onSave={(v) => updateFleetField(f.id, 'schedule_end_h', v)} className="w-16 text-center text-xs" />
                   <span>:</span>
-                  <input type="number" className="w-16 text-center text-xs" min={0} max={59} value={f.schedule_end_m}
-                    onChange={(e) => updateFleetField(f.id, 'schedule_end_m', parseInt(e.target.value) || 0)} />
+                  <ScheduleInput value={f.schedule_end_m} min={0} max={59} onSave={(v) => updateFleetField(f.id, 'schedule_end_m', v)} className="w-16 text-center text-xs" />
                 </div>
               )}
             </div>

@@ -114,17 +114,32 @@ class OrchestratorEngine:
             self.fleet_state.pop(fleet_id, None)
             log.info(f"Fleet {fleet_id} reset")
 
+    def _within_schedule(self, sh, sm, eh, em, label: str) -> bool:
+        """True si la hora actual cae dentro del tramo. Un horario invalido
+        (p.ej. hora=15152 guardada por un frontend viejo) NO debe tumbar la senal:
+        se registra el error y se permite operar."""
+        try:
+            if not (0 <= sh <= 23 and 0 <= eh <= 23 and 0 <= sm <= 59 and 0 <= em <= 59):
+                raise ValueError(f"valores fuera de rango start={sh}:{sm} end={eh}:{em}")
+            now = datetime.now()
+            start = time(sh, sm)
+            end = time(eh, em)
+            current = now.time()
+            if start <= end:
+                return start <= current <= end
+            return current >= start or current <= end
+        except Exception as e:
+            log.error(f"{label}: horario invalido ({e}); se ignora el horario y se permite operar")
+            return True
+
     def _in_fleet_schedule(self, fleet) -> bool:
         if not fleet.schedule_enabled:
             return True
-        now = datetime.now()
-        start = time(fleet.schedule_start_h, fleet.schedule_start_m)
-        end = time(fleet.schedule_end_h, fleet.schedule_end_m)
-        current = now.time()
-        if start <= end:
-            return start <= current <= end
-        else:
-            return current >= start or current <= end
+        return self._within_schedule(
+            fleet.schedule_start_h, fleet.schedule_start_m,
+            fleet.schedule_end_h, fleet.schedule_end_m,
+            label=f"Fleet {fleet.id} '{fleet.name}'",
+        )
 
     def _check_new_day(self):
         """Al cambiar el dia, reinicia la rotacion (processed) de todos los grupos.
@@ -813,14 +828,11 @@ class OrchestratorEngine:
     def _in_schedule(self, group: Group) -> bool:
         if not group.schedule_enabled:
             return True
-        now = datetime.now()
-        start = time(group.schedule_start_h, group.schedule_start_m)
-        end = time(group.schedule_end_h, group.schedule_end_m)
-        current = now.time()
-        if start <= end:
-            return start <= current <= end
-        else:
-            return current >= start or current <= end
+        return self._within_schedule(
+            group.schedule_start_h, group.schedule_start_m,
+            group.schedule_end_h, group.schedule_end_m,
+            label=f"Group {group.id} '{group.name}'",
+        )
 
     def _write_trade(self, nt8_account: str, action: str, instrument: str,
                      contracts: int, sl_ticks: int, tp_ticks: int, close_all: bool = False):
