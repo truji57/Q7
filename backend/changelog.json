@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.51",
+    "date": "2026-09-23",
+    "description": "Aviso visual en la topbar: fondo rojo latiendo cuando falla Backend/NT8/Engine/MT5 y, con Backend OFF, el resto pasa a amarillo '???' (estado desconocido)"
+  },
+  {
     "version": "v0.50",
     "date": "2026-09-23",
     "description": "Fix grupo sin operar por horario corrupto (hora 15152): _in_schedule y _in_fleet_schedule validan rango y hacen fail-open con log en vez de abortar la senal; schemas GroupUpdate/FleetUpdate validan horas 0-23 y minutos 0-59; frontend ScheduleInput y BlurInput con clamp min-max para no guardar valores invalidos"

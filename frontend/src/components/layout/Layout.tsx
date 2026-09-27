@@ -42,13 +42,15 @@ export default function Layout({ children }: { children: ReactNode }) {
   const signalAge = lastSignal ? Math.round((Date.now() - new Date(lastSignal).getTime()) / 1000) : null;
   const engineActive = state?.engine_active ?? false;
   const mt5Connected = state?.mt5_connected ?? false;
+  const hasProblem = !wsConnected || !nt8Connected || !engineActive || !mt5Connected;
+  const backendOff = !wsConnected;
 
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-3 md:px-6 py-3 bg-[#0a0a12] border-b border-[#1c1c2a] shrink-0 flex-wrap gap-2">
+        <div className={`flex items-center justify-between px-3 md:px-6 py-3 bg-[#0a0a12] border-b border-[#1c1c2a] shrink-0 flex-wrap gap-2 ${hasProblem ? 'q7-topbar-alert' : ''}`}>
           <h2 className="text-sm md:text-base font-semibold text-zinc-200">{title}</h2>
           <div className="flex items-center gap-3 md:gap-5 flex-wrap">
             <span className="text-[10px] md:text-xs text-zinc-500 font-mono">
@@ -61,22 +63,22 @@ export default function Layout({ children }: { children: ReactNode }) {
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${nt8Connected ? 'bg-green-500 shadow-[0_0_4px_#22c55e]' : 'bg-red-500'}`} />
-              <span className={`text-[10px] ${nt8Connected ? 'text-green-400' : 'text-red-400'}`}>
-                {nt8Connected ? 'NT8' : 'NT8 OFF'}
+              <span className={`w-2 h-2 rounded-full ${backendOff ? 'bg-yellow-500 shadow-[0_0_4px_#eab308]' : nt8Connected ? 'bg-green-500 shadow-[0_0_4px_#22c55e]' : 'bg-red-500'}`} />
+              <span className={`text-[10px] ${backendOff ? 'text-yellow-400' : nt8Connected ? 'text-green-400' : 'text-red-400'}`}>
+                {backendOff ? 'NT8 ???' : nt8Connected ? 'NT8' : 'NT8 OFF'}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${engineActive ? 'bg-green-500 shadow-[0_0_4px_#22c55e]' : 'bg-zinc-600'}`} />
-              <span className={`text-[10px] ${engineActive ? 'text-green-400' : 'text-zinc-500'}`}
+              <span className={`w-2 h-2 rounded-full ${backendOff ? 'bg-yellow-500 shadow-[0_0_4px_#eab308]' : engineActive ? 'bg-green-500 shadow-[0_0_4px_#22c55e]' : 'bg-zinc-600'}`} />
+              <span className={`text-[10px] ${backendOff ? 'text-yellow-400' : engineActive ? 'text-green-400' : 'text-zinc-500'}`}
                 title={signalAge ? `Last signal: ${signalAge}s ago` : 'No signals yet'}>
-                {engineActive ? 'Engine ON' : 'Engine OFF'}
+                {backendOff ? 'Engine ???' : engineActive ? 'Engine ON' : 'Engine OFF'}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${mt5Connected ? 'bg-green-500 shadow-[0_0_4px_#22c55e]' : 'bg-zinc-600'}`} />
-              <span className={`text-[10px] ${mt5Connected ? 'text-green-400' : 'text-zinc-500'}`}>
-                {mt5Connected ? 'MT5' : 'MT5 OFF'}
+              <span className={`w-2 h-2 rounded-full ${backendOff ? 'bg-yellow-500 shadow-[0_0_4px_#eab308]' : mt5Connected ? 'bg-green-500 shadow-[0_0_4px_#22c55e]' : 'bg-zinc-600'}`} />
+              <span className={`text-[10px] ${backendOff ? 'text-yellow-400' : mt5Connected ? 'text-green-400' : 'text-zinc-500'}`}>
+                {backendOff ? 'MT5 ???' : mt5Connected ? 'MT5' : 'MT5 OFF'}
               </span>
             </div>
           </div>

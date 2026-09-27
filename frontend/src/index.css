@@ -8,6 +8,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+@keyframes q7-alert-pulse {
+  0%, 100% {
+    background-color: rgba(127, 29, 29, 0.35);
+    box-shadow: inset 0 0 14px 0 rgba(239, 68, 68, 0.15);
+  }
+  50% {
+    background-color: rgba(220, 38, 38, 0.6);
+    box-shadow: inset 0 0 30px 2px rgba(239, 68, 68, 0.32);
+  }
+}
+
+.q7-topbar-alert {
+  animation: q7-alert-pulse 1.1s ease-in-out infinite;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
