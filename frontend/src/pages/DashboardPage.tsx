@@ -100,6 +100,7 @@ export default function DashboardPage() {
   const debugMode = useStore((s) => s.debugMode);
   const signalLog = useStore((s) => s.state?.signal_log || []);
   const activityLog = useStore((s) => s.state?.activity_log || []);
+  const wsConnected = useStore((s) => s.wsConnected);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [log, setLog] = useState<string[]>([]);
   const [confirmReset, setConfirmReset] = useState<number | null>(null);
@@ -152,6 +153,7 @@ export default function DashboardPage() {
 
   const fleetGroupIds = new Set((state.fleets || []).flatMap((f) => f.groups.map((g) => g.id)));
   const looseGroups = state.groups.filter((g) => !fleetGroupIds.has(g.id));
+  const balancesUnknown = !(state?.nt8_connected) || !wsConnected;
 
   const renderGroup = (group: Group) => {
         const isOpen = expanded.has(group.id);
@@ -322,18 +324,20 @@ export default function DashboardPage() {
                             warnTitle="INI en 0: TPG/SLG usan PNL TOTAL = Balance - INI; con INI=0 todo parecera ganancia. Pulsa para configurarlo."
                           />
                         </td>
-                        <td className="py-2 px-2 text-center text-zinc-300 truncate">${(acc.balance + (acc.open_pnl || 0)).toFixed(0)}</td>
-                        <td className={`py-2 px-2 text-center truncate font-semibold ${(acc.total_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          ${(acc.total_pnl || 0).toFixed(0)}
+                        <td className="py-2 px-2 text-center text-zinc-300 truncate">
+                          {balancesUnknown ? <span className="text-yellow-400">???</span> : `$${(acc.balance + (acc.open_pnl || 0)).toFixed(0)}`}
                         </td>
-                        <td className={`py-2 px-2 text-center truncate ${acc.daily_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          ${acc.daily_pnl.toFixed(0)}
+                        <td className={`py-2 px-2 text-center truncate font-semibold ${balancesUnknown ? 'text-yellow-400' : (acc.total_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {balancesUnknown ? '???' : `$${(acc.total_pnl || 0).toFixed(0)}`}
                         </td>
-                        <td className={`py-2 px-2 text-center truncate ${(acc.round_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          ${(acc.round_pnl || 0).toFixed(0)}
+                        <td className={`py-2 px-2 text-center truncate ${balancesUnknown ? 'text-yellow-400' : acc.daily_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {balancesUnknown ? '???' : `$${acc.daily_pnl.toFixed(0)}`}
                         </td>
-                        <td className={`py-2 px-2 text-center truncate ${(acc.open_pnl || 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                          ${(acc.open_pnl || 0).toFixed(0)}
+                        <td className={`py-2 px-2 text-center truncate ${balancesUnknown ? 'text-yellow-400' : (acc.round_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {balancesUnknown ? '???' : `$${(acc.round_pnl || 0).toFixed(0)}`}
+                        </td>
+                        <td className={`py-2 px-2 text-center truncate ${balancesUnknown ? 'text-yellow-400' : (acc.open_pnl || 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                          {balancesUnknown ? '???' : `$${(acc.open_pnl || 0).toFixed(0)}`}
                         </td>
                         <td className="py-2 px-2 text-center border-l-2 border-zinc-500/20"><EditCell value={acc.ct} onSave={(v) => updateAccountField(acc.id, 'ct', v)} /></td>
                         <td className="py-2 px-2 text-center"><EditCell value={acc.max_positions || 6} onSave={(v) => updateAccountField(acc.id, 'max_positions', v)} /></td>

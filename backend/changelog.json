@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.52",
+    "date": "2026-09-23",
+    "description": "Dashboard: cuando no hay comunicacion con NT8 (o backend), BALANCE/PNL TOTAL/PNL DIA/PNL RONDA/OPEN muestran '???' en amarillo en vez del ultimo valor guardado"
+  },
+  {
     "version": "v0.51",
     "date": "2026-09-23",
     "description": "Aviso visual en la topbar: fondo rojo latiendo cuando falla Backend/NT8/Engine/MT5 y, con Backend OFF, el resto pasa a amarillo '???' (estado desconocido)"
