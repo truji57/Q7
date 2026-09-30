@@ -15,6 +15,10 @@ export default function Sidebar() {
   const wsConnected = useStore((s) => s.wsConnected);
   const state = useStore((s) => s.state);
   const version = state?.version || '';
+  const allOk = wsConnected
+    && (state?.nt8_connected ?? false)
+    && (state?.engine_active ?? false)
+    && (state?.mt5_connected ?? false);
 
   return (
     <>
@@ -51,7 +55,7 @@ export default function Sidebar() {
         <div className="p-3 border-t border-[#1c1c2a]">
           <div className="flex items-center justify-between px-2 py-1">
             <span className="text-[11px] text-zinc-600">STATUS</span>
-            <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500 shadow-[0_0_6px_#22c55e]' : 'bg-red-500'}`} />
+            <span className={`w-2 h-2 rounded-full ${allOk ? 'bg-green-500 shadow-[0_0_6px_#22c55e]' : 'bg-red-500'}`} />
           </div>
         </div>
       </aside>

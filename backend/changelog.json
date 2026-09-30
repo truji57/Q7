@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.56",
+    "date": "2026-09-29",
+    "description": "Indicador STATUS del sidebar refleja el estado global: verde solo si Backend/NT8/Engine/MT5 estan todos OK, rojo si cualquiera falla"
+  },
+  {
     "version": "v0.55",
     "date": "2026-09-29",
     "description": "Settings reorganizado en contenedores independientes (Fin de tramo horario, Symbols Map, Conexion NT8 Bridge + como funciona, Historial de versiones). Boton Guardar ajustes en verde arriba del todo y Debug Mode oculto"
