@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Save, Download, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
-import { useStore } from '../store';
 
 export default function ConfigPage() {
   const [bridgeHost, setBridgeHost] = useState('127.0.0.1');
   const [bridgePort, setBridgePort] = useState('5556');
   const [mt5TerminalId, setMt5TerminalId] = useState('');
-  const [debugMode, setDebugMode] = useState(false);
   const [scheduleCloseMode, setScheduleCloseMode] = useState('close');
   const [saved, setSaved] = useState(false);
   const [installed, setInstalled] = useState(false);
@@ -16,22 +14,17 @@ export default function ConfigPage() {
   const [symbols, setSymbols] = useState<{mt5_symbol: string; nt8_instrument: string}[]>([]);
   const [defaultInstrument, setDefaultInstrument] = useState('MNQ 09-26');
   const [symbolsSaved, setSymbolsSaved] = useState(false);
-  const setDebug = useStore((s) => s.setDebugMode);
 
   useEffect(() => {
     api.getConfig().then((c) => {
       setBridgeHost(c.bridge_host || '127.0.0.1');
       setBridgePort(c.bridge_port || '5556');
       setMt5TerminalId(c.mt5_terminal_id || 'D0E8209F77C8CF37AD8BF550E51FF075');
-      setDebugMode(c.debug_mode === 'true');
       setScheduleCloseMode(c.schedule_close_mode || 'close');
     }).catch(() => {});
     api.getChangelog().then((data) => {
-      console.log('Changelog loaded:', data);
       setChangelog(data);
-    }).catch((e) => {
-      console.error('Changelog error:', e);
-    });
+    }).catch(() => {});
     api.checkUpdate().then((u) => {
       if (u.has_update) setUpdateAvailable(u.remote);
     }).catch(() => {});
@@ -60,10 +53,8 @@ export default function ConfigPage() {
         bridge_host: bridgeHost,
         bridge_port: bridgePort,
         mt5_terminal_id: mt5TerminalId,
-        debug_mode: debugMode ? 'true' : 'false',
         schedule_close_mode: scheduleCloseMode
       });
-      setDebug(debugMode);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e: any) {
@@ -88,75 +79,158 @@ export default function ConfigPage() {
   return (
     <div className="max-w-2xl">
 
-      <div className="bg-[#0e0e18] border border-[#1c1c2a] rounded-lg p-6 space-y-5">
-        <div>
-          <h3 className="text-sm font-semibold text-zinc-300 mb-4">Conexion NT8 Bridge</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[11px] text-zinc-500 mb-1">Host</label>
+      {/* Save Settings (arriba del todo) */}
+      <div className="flex items-center justify-end mb-6">
+        <button
+          onClick={handleSave}
+          className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-md text-sm font-semibold hover:bg-green-500 transition-colors"
+        >
+          <Save size={15} />
+          {saved ? 'Guardado!' : 'Guardar ajustes'}
+        </button>
+      </div>
+
+      {/* 1. Fin de tramo horario */}
+      <div className="bg-[#0e0e18] border border-[#1c1c2a] rounded-lg p-6 mb-4">
+        <h3 className="text-sm font-semibold text-zinc-300 mb-2">Fin de tramo horario</h3>
+        <p className="text-[10px] text-zinc-600 mb-3 leading-relaxed">
+          Cuando el tramo horario de un grupo finalice con una posicion abierta:
+        </p>
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-400">
+            <input type="radio" name="scheduleClose" className="w-4 h-4" checked={scheduleCloseMode === 'close'} onChange={() => setScheduleCloseMode('close')} />
+            Cerrar todas las posiciones del grupo al terminar el tramo
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-400">
+            <input type="radio" name="scheduleClose" className="w-4 h-4" checked={scheduleCloseMode === 'run'} onChange={() => setScheduleCloseMode('run')} />
+            Dejar correr la posicion gestionada (TP/SL siguen activos), pero no abrir mas
+          </label>
+        </div>
+        <p className="text-[10px] text-zinc-600 mt-2">
+          La gestion de la posicion abierta (TPC/SLC/TPD/SLD/TPR/SLR/TPG/SLG) se ejecuta SIEMPRE, dentro o fuera del horario.
+        </p>
+      </div>
+
+      {/* 2. Symbols Map */}
+      <div className="bg-[#0e0e18] border border-[#1c1c2a] rounded-lg p-6 mb-4">
+        <h3 className="text-sm font-semibold text-zinc-300 mb-1">Symbols Map</h3>
+        <p className="text-[10px] text-zinc-600 mb-3 leading-relaxed">
+          Traduce el simbolo que envia el EA de MT5 (USTEC, NAS100, ...) al futuro que se opera en NT8 (MNQ 09-26, MES 09-26, ...).
+        </p>
+
+        <div className="space-y-2">
+          {symbols.map((s, i) => (
+            <div key={i} className="flex items-center gap-2">
               <input
                 type="text"
-                value={bridgeHost}
-                onChange={(e) => setBridgeHost(e.target.value)}
-                className="w-full"
+                value={s.mt5_symbol}
+                onChange={(e) => {
+                  const copy = [...symbols];
+                  copy[i] = { ...copy[i], mt5_symbol: e.target.value.toUpperCase() };
+                  setSymbols(copy);
+                }}
+                placeholder="USTEC"
+                className="w-1/2 text-xs"
               />
-            </div>
-            <div>
-              <label className="block text-[11px] text-zinc-500 mb-1">Port</label>
+              <span className="text-zinc-600 text-xs">→</span>
               <input
-                type="number"
-                value={bridgePort}
-                onChange={(e) => setBridgePort(e.target.value)}
-                className="w-full"
+                type="text"
+                value={s.nt8_instrument}
+                onChange={(e) => {
+                  const copy = [...symbols];
+                  copy[i] = { ...copy[i], nt8_instrument: e.target.value };
+                  setSymbols(copy);
+                }}
+                placeholder="MNQ 09-26"
+                className="w-1/2 text-xs"
               />
+              <button
+                onClick={() => setSymbols(symbols.filter((_, j) => j !== i))}
+                className="text-zinc-600 hover:text-red-400 transition-colors"
+                title="Borrar fila"
+              >
+                <Trash2 size={13} />
+              </button>
             </div>
-          </div>
+          ))}
+        </div>
 
-          <div className="mt-4">
-            <label className="block text-[11px] text-zinc-500 mb-1">MT5 Terminal ID</label>
+        <button
+          onClick={() => setSymbols([...symbols, { mt5_symbol: '', nt8_instrument: '' }])}
+          className="mt-2 flex items-center gap-1.5 px-3 py-1.5 bg-[#1c1c2a] border border-[#2a2a3a] text-zinc-400 rounded-md text-xs hover:bg-[#242433] transition-colors"
+        >
+          <Plus size={12} />
+          Añadir simbolo
+        </button>
+
+        <div className="mt-4">
+          <label className="block text-[11px] text-zinc-500 mb-1">Instrumento por defecto (simbolo sin mapear)</label>
+          <input
+            type="text"
+            value={defaultInstrument}
+            onChange={(e) => setDefaultInstrument(e.target.value)}
+            className="w-full text-xs"
+            placeholder="MNQ 09-26"
+          />
+        </div>
+
+        <button
+          onClick={handleSaveSymbols}
+          className="mt-3 flex items-center gap-2 px-4 py-2 bg-[#6b7280] text-white rounded-md text-xs font-semibold hover:bg-[#52525b] transition-colors"
+        >
+          <Save size={14} />
+          {symbolsSaved ? 'Guardado!' : 'Guardar Symbols Map'}
+        </button>
+      </div>
+
+      {/* 3. Conexion NT8 Bridge + como funciona */}
+      <div className="bg-[#0e0e18] border border-[#1c1c2a] rounded-lg p-6 mb-4">
+        <h3 className="text-sm font-semibold text-zinc-300 mb-4">Conexion NT8 Bridge</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] text-zinc-500 mb-1">Host</label>
             <input
               type="text"
-              value={mt5TerminalId}
-              onChange={(e) => setMt5TerminalId(e.target.value)}
-              className="w-full text-xs"
-              placeholder="D0E8209F77C8CF37AD8BF550E51FF075"
+              value={bridgeHost}
+              onChange={(e) => setBridgeHost(e.target.value)}
+              className="w-full"
             />
-            <p className="text-[10px] text-zinc-600 mt-1">
-              Carpeta de datos de MT5. Ubicacion: <code className="text-zinc-500">AppData\Roaming\MetaQuotes\Terminal\{mt5TerminalId || '...'}</code>
-            </p>
           </div>
-
-          <button
-            onClick={handleInstallAddon}
-            className="mt-3 flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 text-green-400 rounded-md text-xs font-semibold hover:bg-green-500/20 transition-colors"
-          >
-            <Download size={13} />
-            {installed ? 'Copiado! Compila F5 en NT8' : 'Instalar AddOn en NT8'}
-          </button>
+          <div>
+            <label className="block text-[11px] text-zinc-500 mb-1">Port</label>
+            <input
+              type="number"
+              value={bridgePort}
+              onChange={(e) => setBridgePort(e.target.value)}
+              className="w-full"
+            />
+          </div>
         </div>
 
-        <div className="border-t border-[#1a1a2a] pt-5">
-          <h3 className="text-sm font-semibold text-zinc-300 mb-2">Fin de tramo horario</h3>
-          <p className="text-[10px] text-zinc-600 mb-3 leading-relaxed">
-            Cuando el tramo horario de un grupo finalice con una posicion abierta:
-          </p>
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-400">
-              <input type="radio" name="scheduleClose" className="w-4 h-4" checked={scheduleCloseMode === 'close'} onChange={() => setScheduleCloseMode('close')} />
-              Cerrar todas las posiciones del grupo al terminar el tramo
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-400">
-              <input type="radio" name="scheduleClose" className="w-4 h-4" checked={scheduleCloseMode === 'run'} onChange={() => setScheduleCloseMode('run')} />
-              Dejar correr la posicion gestionada (TP/SL siguen activos), pero no abrir mas
-            </label>
-          </div>
-          <p className="text-[10px] text-zinc-600 mt-2">
-            La gestion de la posicion abierta (TPC/SLC/TPD/SLD/TPR/SLR/TPG/SLG) se ejecuta SIEMPRE, dentro o fuera del horario.
+        <div className="mt-4">
+          <label className="block text-[11px] text-zinc-500 mb-1">MT5 Terminal ID</label>
+          <input
+            type="text"
+            value={mt5TerminalId}
+            onChange={(e) => setMt5TerminalId(e.target.value)}
+            className="w-full text-xs"
+            placeholder="D0E8209F77C8CF37AD8BF550E51FF075"
+          />
+          <p className="text-[10px] text-zinc-600 mt-1">
+            Carpeta de datos de MT5. Ubicacion: <code className="text-zinc-500">AppData\Roaming\MetaQuotes\Terminal\{mt5TerminalId || '...'}</code>
           </p>
         </div>
 
-        <div className="border-t border-[#1a1a2a] pt-5">
-          <h3 className="text-sm font-semibold text-zinc-300 mb-2">Como funciona</h3>
+        <button
+          onClick={handleInstallAddon}
+          className="mt-3 flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 text-green-400 rounded-md text-xs font-semibold hover:bg-green-500/20 transition-colors"
+        >
+          <Download size={13} />
+          {installed ? 'Copiado! Compila F5 en NT8' : 'Instalar AddOn en NT8'}
+        </button>
+
+        <div className="border-t border-[#1a1a2a] mt-5 pt-5">
+          <h4 className="text-xs font-semibold text-zinc-400 mb-2">Como funciona</h4>
           <p className="text-[10px] text-zinc-500 leading-relaxed">
             <strong className="text-zinc-400">1.</strong> El EA <code className="text-zinc-400">Q7_SignalCatcher.mq5</code> de MT5 detecta operaciones y envia señales.<br />
             <strong className="text-zinc-400">2.</strong> El Orquestrador las recibe y escribe comandos en <code className="text-zinc-400">Q7\commands\</code>.<br />
@@ -169,109 +243,16 @@ export default function ConfigPage() {
           <p className="text-[10px] text-zinc-600 mt-2">
             El archivo <code className="text-zinc-400">Q7_SignalCatcher.mq5</code> esta en la carpeta <code className="text-zinc-400">mt5/</code> del proyecto. Copialo a <code className="text-zinc-400">MQL5\Experts\</code> de MT5 y compila con <kbd className="text-zinc-400">F7</kbd>.
           </p>
-        </div>
-
-        <div className="border-t border-[#1a1a2a] pt-5">
-          <h3 className="text-sm font-semibold text-zinc-300 mb-1">Symbols Map</h3>
-          <p className="text-[10px] text-zinc-600 mb-3 leading-relaxed">
-            Traduce el simbolo que envia el EA de MT5 (USTEC, NAS100, ...) al futuro que se opera en NT8 (MNQ 09-26, MES 09-26, ...).
-          </p>
-
-          <div className="space-y-2">
-            {symbols.map((s, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={s.mt5_symbol}
-                  onChange={(e) => {
-                    const copy = [...symbols];
-                    copy[i] = { ...copy[i], mt5_symbol: e.target.value.toUpperCase() };
-                    setSymbols(copy);
-                  }}
-                  placeholder="USTEC"
-                  className="w-1/2 text-xs"
-                />
-                <span className="text-zinc-600 text-xs">→</span>
-                <input
-                  type="text"
-                  value={s.nt8_instrument}
-                  onChange={(e) => {
-                    const copy = [...symbols];
-                    copy[i] = { ...copy[i], nt8_instrument: e.target.value };
-                    setSymbols(copy);
-                  }}
-                  placeholder="MNQ 09-26"
-                  className="w-1/2 text-xs"
-                />
-                <button
-                  onClick={() => setSymbols(symbols.filter((_, j) => j !== i))}
-                  className="text-zinc-600 hover:text-red-400 transition-colors"
-                  title="Borrar fila"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={() => setSymbols([...symbols, { mt5_symbol: '', nt8_instrument: '' }])}
-            className="mt-2 flex items-center gap-1.5 px-3 py-1.5 bg-[#1c1c2a] border border-[#2a2a3a] text-zinc-400 rounded-md text-xs hover:bg-[#242433] transition-colors"
-          >
-            <Plus size={12} />
-            Añadir simbolo
-          </button>
-
-          <div className="mt-4">
-            <label className="block text-[11px] text-zinc-500 mb-1">Instrumento por defecto (simbolo sin mapear)</label>
-            <input
-              type="text"
-              value={defaultInstrument}
-              onChange={(e) => setDefaultInstrument(e.target.value)}
-              className="w-full text-xs"
-              placeholder="MNQ 09-26"
-            />
-          </div>
-
-          <button
-            onClick={handleSaveSymbols}
-            className="mt-3 flex items-center gap-2 px-4 py-2 bg-[#6b7280] text-white rounded-md text-xs font-semibold hover:bg-[#52525b] transition-colors"
-          >
-            <Save size={14} />
-            {symbolsSaved ? 'Guardado!' : 'Guardar Symbols Map'}
-          </button>
-        </div>
-
-        <div className="border-t border-[#1a1a2a] pt-5">
-          <h3 className="text-sm font-semibold text-zinc-300 mb-2">NinjaTrader</h3>
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-500 mt-2">
             Tras instalar el AddOn, abre el NinjaScript Editor y presiona <kbd className="text-zinc-400">F5</kbd> para compilar.
           </p>
         </div>
+      </div>
 
-        <div className="border-t border-[#1a1a2a] pt-5 flex justify-between items-center">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={debugMode}
-              onChange={(e) => setDebugMode(e.target.checked)}
-              className="w-4 h-4"
-            />
-            <span className="text-xs text-zinc-400">Debug Mode (shows RESET / LONG / SHORT buttons)</span>
-          </label>
-          <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              className="flex items-center gap-2 px-4 py-2 bg-[#6b7280] text-white rounded-md text-xs font-semibold hover:bg-[#52525b] transition-colors"
-            >
-              <Save size={14} />
-              {saved ? 'Saved!' : 'Save Settings'}
-            </button>
-          </div>
-        </div>
-
+      {/* 4. Historial de versiones */}
+      <div className="bg-[#0e0e18] border border-[#1c1c2a] rounded-lg p-6">
         {updateAvailable && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center gap-2">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center gap-2 mb-4">
             <AlertCircle size={14} className="text-amber-400 shrink-0" />
             <span className="text-xs text-amber-300">
               Nueva version disponible: <strong className="text-amber-200">{updateAvailable}</strong> — ejecuta <code className="text-amber-400">updater.bat</code> para actualizar
@@ -280,7 +261,7 @@ export default function ConfigPage() {
         )}
 
         {changelog.length > 0 ? (
-          <div className="bg-[#0e0e18] border border-[#1c1c2a] rounded-lg p-6 mt-4">
+          <div>
             <h3 className="text-sm font-semibold text-zinc-300 mb-3">Historial de versiones</h3>
             <div className="space-y-3 max-h-80 overflow-y-auto">
               {changelog.map((entry, i) => (
@@ -296,6 +277,7 @@ export default function ConfigPage() {
           </div>
         ) : null}
       </div>
+
     </div>
   );
 }

@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.55",
+    "date": "2026-09-29",
+    "description": "Settings reorganizado en contenedores independientes (Fin de tramo horario, Symbols Map, Conexion NT8 Bridge + como funciona, Historial de versiones). Boton Guardar ajustes en verde arriba del todo y Debug Mode oculto"
+  },
+  {
     "version": "v0.54",
     "date": "2026-09-29",
     "description": "Reordenar cuentas dentro de grupos (flechas arriba/abajo + endpoint PUT /groups/{id}/accounts/order, to_group_dict ordena por order_index) y reordenar grupos en flotas visible tambien en modo paralelo"
