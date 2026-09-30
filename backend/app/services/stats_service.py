@@ -10,7 +10,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.models.account import (
-    Account, Group, EquitySnapshot, TradeClose, ConfigSnapshot,
+    Account, Group, Preset, EquitySnapshot, TradeClose, ConfigSnapshot,
 )
 
 
@@ -270,6 +270,97 @@ class StatsService:
             })
         out.sort(key=lambda r: -abs(r["net_pnl"]))
         return out
+
+    def predefined_presets_summary(self, from_dt=None, to_dt=None) -> list:
+        """Resumen por preset PREDEFINIDO (tabla presets): cada uno con su
+        preset_key (hash de sus parametros) y las metricas de los cierres que
+        se realizaron con esa config."""
+        presets = self.db.query(Preset).order_by(Preset.id).all()
+        closes = self._closes(from_dt=from_dt, to_dt=to_dt)
+        by_key: dict = {}
+        for c in closes:
+            k = c.preset_key or "?"
+            by_key.setdefault(k, []).append(c)
+
+        out = []
+        for p in presets:
+            key = make_preset_key(p)
+            pc = by_key.get(key, [])
+            m = self._metrics(pc, [])
+            out.append({
+                "id": p.id,
+                "name": p.name,
+                "preset_key": key,
+                "ct": p.ct, "max_positions": p.max_positions,
+                "tpc": p.tpc, "slc": p.slc,
+                "pdpt": p.pdpt, "pdll": p.pdll,
+                "tpd": p.tpd, "sld": p.sld,
+                "tpg": p.tpg, "slg": p.slg,
+                "n": m["n"], "wins": m["wins"],
+                "winrate": m["winrate"], "net_pnl": m["net_pnl"],
+                "profit_factor": m["profit_factor"],
+            })
+        return out
+
+    def preset_detail(self, preset_id: int, from_dt=None, to_dt=None) -> dict | None:
+        """Detalle de un preset PREDEFINIDO: metricas + desglose por cuenta +
+        breakdowns + trades de todos los cierres hechos con su misma config."""
+        p = self.db.query(Preset).filter(Preset.id == preset_id).first()
+        if not p:
+            return None
+        key = make_preset_key(p)
+        closes = [c for c in self._closes(from_dt=from_dt, to_dt=to_dt)
+                  if (c.preset_key or "") == key]
+        m = self._metrics(closes, [])
+
+        trades = [{
+            "id": c.id,
+            "ts_open": _fmt_dt(c.ts_open),
+            "ts_close": _fmt_dt(c.ts_close),
+            "direction": c.direction,
+            "instrument": c.instrument,
+            "pnl": round(c.pnl, 2),
+            "reason": c.reason,
+            "preset_key": c.preset_key,
+        } for c in sorted(closes, key=lambda c: c.ts_close, reverse=True)[:200]]
+
+        acc_map: dict = {}
+        for c in closes:
+            acc = acc_map.setdefault(c.account_id, {"n": 0, "wins": 0, "pnl": 0.0})
+            acc["n"] += 1
+            acc["pnl"] += c.pnl or 0
+            if c.pnl > 0:
+                acc["wins"] += 1
+
+        accounts = []
+        for aid, acc in acc_map.items():
+            a = self.db.query(Account).filter(Account.id == aid).first()
+            accounts.append({
+                "account_id": aid,
+                "name": a.name if a else f"#{aid}",
+                "group_id": a.group_id if a else None,
+                "status": a.status if a else "",
+                "n": acc["n"],
+                "wins": acc["wins"],
+                "winrate": round(acc["wins"] / acc["n"] * 100.0, 1) if acc["n"] else 0.0,
+                "net_pnl": round(acc["pnl"], 2),
+            })
+        accounts.sort(key=lambda r: -abs(r["net_pnl"]))
+
+        return {
+            "preset_id": p.id,
+            "name": p.name,
+            "preset_key": key,
+            "ct": p.ct, "max_positions": p.max_positions,
+            "tpc": p.tpc, "slc": p.slc,
+            "pdpt": p.pdpt, "pdll": p.pdll,
+            "tpd": p.tpd, "sld": p.sld,
+            "tpg": p.tpg, "slg": p.slg,
+            **m,
+            "breakdowns": self._breakdowns(closes),
+            "trades": trades,
+            "accounts": accounts,
+        }
 
     def history_trades(self, account_id: int = None, group_id: int = None,
                        direction: str = None, instrument: str = None, reason: str = None,

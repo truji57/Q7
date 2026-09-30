@@ -602,7 +602,19 @@ def stats_presets(from_dt: datetime | None = Query(None, alias="from"),
                   to_dt: datetime | None = Query(None, alias="to"),
                   db: Session = Depends(get_db)):
     st = StatsService(db)
-    return st.preset_summary(from_dt, to_dt)
+    return st.predefined_presets_summary(from_dt, to_dt)
+
+
+@router.get("/stats/presets/{preset_id}")
+def stats_preset_detail(preset_id: int,
+                        from_dt: datetime | None = Query(None, alias="from"),
+                        to_dt: datetime | None = Query(None, alias="to"),
+                        db: Session = Depends(get_db)):
+    st = StatsService(db)
+    d = st.preset_detail(preset_id, from_dt, to_dt)
+    if not d:
+        raise HTTPException(404, "Preset not found")
+    return d
 
 
 @router.post("/stats/reset")

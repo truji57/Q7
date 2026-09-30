@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
 import { api } from '../lib/api';
-import { Group, AccountStatsRow, AccountStatsDetail, PresetStats, GroupStats, EquityPoint } from '../types';
+import { Group, AccountStatsRow, AccountStatsDetail, PresetStats, PresetStatsDetail, GroupStats, EquityPoint } from '../types';
 
 type Tab = 'account' | 'group' | 'presets';
 type Range = 'today' | '7d' | '30d' | 'all';
@@ -166,6 +166,8 @@ export default function StatisticsPage() {
   const [equity, setEquity] = useState<EquityPoint[]>([]);
   const [groupStats, setGroupStats] = useState<GroupStats | null>(null);
   const [presets, setPresets] = useState<PresetStats[]>([]);
+  const [presetId, setPresetId] = useState<number | null>(null);
+  const [presetDetail, setPresetDetail] = useState<PresetStatsDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -229,11 +231,26 @@ export default function StatisticsPage() {
       setLoading(true);
       try {
         const p = await api.getStatsPresets(params.from, params.to);
-        if (!cancelled) setPresets(p);
+        if (cancelled) return;
+        setPresets(p);
+        setPresetId((prev) => prev ?? p[0]?.id ?? null);
       } catch {} finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
   }, [tab, params, reloadKey]);
+
+  useEffect(() => {
+    if (tab !== 'presets' || presetId == null) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const d = await api.getStatsPreset(presetId, params.from, params.to);
+        if (!cancelled) setPresetDetail(d);
+      } catch {} finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [tab, presetId, params, reloadKey]);
 
   const selected = accountId != null ? accRows.find((r) => r.account_id === accountId) : undefined;
   const detailNet = detail?.net_pnl ?? 0;
@@ -278,6 +295,17 @@ export default function StatisticsPage() {
             >
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          )}
+          {tab === 'presets' && (
+            <select
+              className="text-xs bg-[#1a1a26] border border-[#2a2a3a] rounded-md px-2 py-1.5 text-zinc-200"
+              value={presetId ?? ''}
+              onChange={(e) => setPresetId(Number(e.target.value))}
+            >
+              {presets.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
           )}
@@ -431,44 +459,120 @@ export default function StatisticsPage() {
       )}
 
       {tab === 'presets' && (
-        <div className="bg-[#12121f] border border-[#1c1c2a] rounded-lg overflow-hidden">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-zinc-600 text-left bg-[#0e0e18]">
-                <th className="px-3 py-2 font-medium">Preset</th>
-                <th className="px-3 py-2 text-right font-medium">N</th>
-                <th className="px-3 py-2 text-right font-medium">Winrate</th>
-                <th className="px-3 py-2 text-right font-medium">Net</th>
-                <th className="px-3 py-2 text-right font-medium">Avg</th>
-                <th className="px-3 py-2 text-right font-medium">PF</th>
-                <th className="px-3 py-2 text-right font-medium">CT/MXP</th>
-                <th className="px-3 py-2 text-right font-medium">TPC/SLC</th>
-                <th className="px-3 py-2 text-right font-medium">TPR/SLR</th>
-                <th className="px-3 py-2 text-right font-medium">TPD/SLD</th>
-                <th className="px-3 py-2 text-right font-medium">TPG/SLG</th>
-              </tr>
-            </thead>
-            <tbody>
-              {presets.map((p) => (
-                <tr key={p.preset_key} className="border-t border-[#1c1c2a]">
-                  <td className="px-3 py-1.5 font-mono text-zinc-400">{p.preset_key}</td>
-                  <td className="px-3 py-1.5 text-right text-zinc-300">{p.n}</td>
-                  <td className="px-3 py-1.5 text-right text-zinc-300">{fmtPct(p.winrate)}</td>
-                  <td className={`px-3 py-1.5 text-right ${p.net_pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmtMoney(p.net_pnl)}</td>
-                  <td className="px-3 py-1.5 text-right text-zinc-400">{fmtMoney(p.avg)}</td>
-                  <td className="px-3 py-1.5 text-right text-zinc-400">{p.profit_factor.toFixed(2)}</td>
-                  <td className="px-3 py-1.5 text-right text-zinc-400">{p.ct ?? '—'}/{p.max_positions ?? '—'}</td>
-                  <td className="px-3 py-1.5 text-right text-zinc-400">{p.tpc ?? '—'}/{p.slc ?? '—'}</td>
-                  <td className="px-3 py-1.5 text-right text-zinc-400">{p.pdpt ?? '—'}/{p.pdll ?? '—'}</td>
-                  <td className="px-3 py-1.5 text-right text-zinc-400">{p.tpd ?? '—'}/{p.sld ?? '—'}</td>
-                  <td className="px-3 py-1.5 text-right text-zinc-400">{p.tpg ?? '—'}/{p.slg ?? '—'}</td>
-                </tr>
-              ))}
-              {presets.length === 0 && (
-                <tr><td colSpan={11} className="px-3 py-3 text-center text-zinc-600">Aún no hay cierres registrados. Arrancan a acumularse al operar.</td></tr>
-              )}
-            </tbody>
-          </table>
+        <div className="space-y-4">
+          {presets.length === 0 ? (
+            <div className="bg-[#12121f] border border-[#1c1c2a] rounded-lg p-6 text-center">
+              <p className="text-xs text-zinc-500">No hay presets definidos. Crea uno en el menú Presets para ver sus estadísticas.</p>
+            </div>
+          ) : (
+            presetDetail && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-zinc-200">{presetDetail.name}</span>
+                  <span className="text-[11px] font-mono text-zinc-500">#{presetDetail.preset_id} · key {presetDetail.preset_key.slice(0, 8)}</span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                  <Kpi label="Winrate" value={fmtPct(presetDetail.winrate)} accent={presetDetail.winrate >= 50 ? 'pos' : 'neg'} sub={`${presetDetail.n ?? 0} trades (${presetDetail.wins ?? 0}W)`} />
+                  <Kpi label="Net PnL" value={fmtMoney(presetDetail.net_pnl, 0)} accent={presetDetail.net_pnl >= 0 ? 'pos' : 'neg'} sub="suma de cierres" />
+                  <Kpi label="Profit Factor" value={presetDetail.profit_factor?.toFixed(2) ?? '0.00'} accent={presetDetail.profit_factor >= 1 ? 'pos' : 'neg'} />
+                  <Kpi label="Expectancy" value={fmtMoney(presetDetail.expectancy, 2)} accent={presetDetail.expectancy >= 0 ? 'pos' : 'neg'} />
+                  <Kpi label="Max DD" value={fmtMoney(presetDetail.max_dd, 0)} sub={`${fmtPct(presetDetail.max_dd_pct)}`} />
+                  <Kpi label="Avg Win" value={fmtMoney(presetDetail.avg_win, 0)} accent="pos" />
+                  <Kpi label="Avg Loss" value={fmtMoney(presetDetail.avg_loss, 0)} accent="neg" />
+                  <Kpi label="Trades" value={`${presetDetail.n ?? 0}`} />
+                </div>
+
+                <div className="bg-[#12121f] border border-[#1c1c2a] rounded-lg p-4">
+                  <h4 className="text-xs font-semibold text-zinc-300 mb-3">Parámetros del preset</h4>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-500">
+                    <span>CT: <span className="text-zinc-300">{presetDetail.ct ?? '—'}</span></span>
+                    <span>MXP: <span className="text-zinc-300">{presetDetail.max_positions ?? '—'}</span></span>
+                    <span>TPC: <span className="text-zinc-300">{presetDetail.tpc ?? '—'}</span></span>
+                    <span>SLC: <span className="text-zinc-300">{presetDetail.slc ?? '—'}</span></span>
+                    <span>TPR: <span className="text-zinc-300">{presetDetail.pdpt ?? '—'}</span></span>
+                    <span>SLR: <span className="text-zinc-300">{presetDetail.pdll ?? '—'}</span></span>
+                    <span>TPD: <span className="text-zinc-300">{presetDetail.tpd ?? '—'}</span></span>
+                    <span>SLD: <span className="text-zinc-300">{presetDetail.sld ?? '—'}</span></span>
+                    <span>TPG: <span className="text-zinc-300">{presetDetail.tpg ?? '—'}</span></span>
+                    <span>SLG: <span className="text-zinc-300">{presetDetail.slg ?? '—'}</span></span>
+                  </div>
+                </div>
+
+                <div className="bg-[#12121f] border border-[#1c1c2a] rounded-lg overflow-hidden">
+                  <h4 className="px-4 pt-3 text-xs font-semibold text-zinc-300">Cuentas que usaron este preset</h4>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-zinc-600 text-left bg-[#0e0e18]">
+                        <th className="px-3 py-2 font-medium">Cuenta</th>
+                        <th className="px-3 py-2 text-right font-medium">Trades</th>
+                        <th className="px-3 py-2 text-right font-medium">Winrate</th>
+                        <th className="px-3 py-2 text-right font-medium">Net</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {presetDetail.accounts.map((r) => (
+                        <tr key={r.account_id} className="border-t border-[#1c1c2a] hover:bg-[#161624]">
+                          <td className="px-3 py-1.5">
+                            <span className="text-zinc-300">{r.name}</span>
+                            <span className="text-zinc-600 text-[10px] ml-1">{r.status}</span>
+                          </td>
+                          <td className="px-3 py-1.5 text-right text-zinc-400">{r.n}</td>
+                          <td className="px-3 py-1.5 text-right text-zinc-300">{fmtPct(r.winrate)}</td>
+                          <td className={`px-3 py-1.5 text-right ${r.net_pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmtMoney(r.net_pnl)}</td>
+                        </tr>
+                      ))}
+                      {presetDetail.accounts.length === 0 && (
+                        <tr><td colSpan={4} className="px-3 py-3 text-center text-zinc-600">Sin datos.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="bg-[#12121f] border border-[#1c1c2a] rounded-lg p-4">
+                  <h4 className="text-xs font-semibold text-zinc-300 mb-2">PnL diario (trades)</h4>
+                  <DailyPnlChart trades={presetDetail.trades ?? []} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <BreakdownTable title="Por dirección" rows={presetDetail.breakdowns.direction} />
+                  <BreakdownTable title="Por instrumento" rows={presetDetail.breakdowns.instrument} />
+                  <BreakdownTable title="Por motivo de cierre" rows={presetDetail.breakdowns.reason.map((r) => ({ ...r, key: REASON_LABELS[r.key] || r.key }))} />
+                  <BreakdownTable title="Por día de semana" rows={presetDetail.breakdowns.weekday} />
+                  <BreakdownTable title="Por mes" rows={presetDetail.breakdowns.month} />
+                </div>
+
+                <div className="bg-[#12121f] border border-[#1c1c2a] rounded-lg p-4">
+                  <h4 className="text-xs font-semibold text-zinc-300 mb-2">Trades recientes</h4>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-zinc-600 text-left">
+                        <th className="pb-1 font-medium">Cierre</th>
+                        <th className="pb-1 font-medium">Dir</th>
+                        <th className="pb-1 font-medium">Instrumento</th>
+                        <th className="pb-1 text-right font-medium">PnL</th>
+                        <th className="pb-1 font-medium">Motivo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {presetDetail.trades.map((t) => (
+                        <tr key={t.id} className="border-t border-[#1c1c2a]">
+                          <td className="py-1 text-zinc-400">{t.ts_close ? t.ts_close.replace('T', ' ').slice(0, 16) : '—'}</td>
+                          <td className="py-1 text-zinc-300">{t.direction === 'LONG' ? 'L' : t.direction === 'SHORT' ? 'S' : t.direction}</td>
+                          <td className="py-1 text-zinc-300">{t.instrument}</td>
+                          <td className={`py-1 text-right ${t.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmtMoney(t.pnl)}</td>
+                          <td className="py-1 text-zinc-400">{REASON_LABELS[t.reason] || t.reason}</td>
+                        </tr>
+                      ))}
+                      {presetDetail.trades.length === 0 && (
+                        <tr><td colSpan={5} className="py-2 text-zinc-600 text-center">Sin trades en el período.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          )}
         </div>
       )}
 
@@ -494,7 +598,7 @@ export default function StatisticsPage() {
                 setLoading(true);
                 try {
                   await api.resetStats();
-                  setAccRows([]); setDetail(null); setEquity([]); setGroupStats(null); setPresets([]);
+                  setAccRows([]); setDetail(null); setEquity([]); setGroupStats(null); setPresets([]); setPresetDetail(null); setPresetId(null);
                   setReloadKey((k) => k + 1);
                 } catch (e: any) { alert('Error al resetear: ' + e.message); }
                 finally { setLoading(false); }

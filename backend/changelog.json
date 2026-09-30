@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.59",
+    "date": "2026-09-30",
+    "description": "Stats por preset predefinido: desplegable en la pestana Presets de Stats con detalle (KPIs, parametros, cuentas que lo usaron, breakdowns y trades) uniendo por preset_key. Fix columna RND en dashboard: muestra la ronda actual (round_num+1) empezando en 1. Eliminado owl_logo.png duplicado de la raiz"
+  },
+  {
     "version": "v0.58",
     "date": "2026-09-30",
     "description": "Fix barra de progreso del dashboard: el total usa todas las cuentas del grupo (siempre fijo) y cuenta como completadas las que no estan en PENDING/TRADING, en vez de filtrar por habilitadas"

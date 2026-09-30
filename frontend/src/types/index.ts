@@ -206,13 +206,9 @@ export interface AccountStatsDetail extends StatsSummary {
 }
 
 export interface PresetStats {
+  id: number;
+  name: string;
   preset_key: string;
-  n: number;
-  wins: number;
-  winrate: number;
-  net_pnl: number;
-  avg: number;
-  profit_factor: number;
   ct: number | null;
   max_positions: number | null;
   tpc: number | null;
@@ -223,6 +219,45 @@ export interface PresetStats {
   sld: number | null;
   tpg: number | null;
   slg: number | null;
+  n: number;
+  wins: number;
+  winrate: number;
+  net_pnl: number;
+  profit_factor: number;
+}
+
+export interface PresetStatsDetail extends StatsSummary {
+  preset_id: number;
+  name: string;
+  preset_key: string;
+  ct: number | null;
+  max_positions: number | null;
+  tpc: number | null;
+  slc: number | null;
+  pdpt: number | null;
+  pdll: number | null;
+  tpd: number | null;
+  sld: number | null;
+  tpg: number | null;
+  slg: number | null;
+  breakdowns: {
+    direction: BreakdownGroup[];
+    instrument: BreakdownGroup[];
+    reason: BreakdownGroup[];
+    weekday: BreakdownGroup[];
+    month: BreakdownGroup[];
+  };
+  trades: TradeCloseRecord[];
+  accounts: {
+    account_id: number;
+    name: string;
+    group_id: number | null;
+    status: string;
+    n: number;
+    wins: number;
+    winrate: number;
+    net_pnl: number;
+  }[];
 }
 
 export interface GroupStats {
