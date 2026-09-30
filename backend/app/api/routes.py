@@ -14,6 +14,7 @@ from app.schemas.account import (
     GroupCreate, GroupUpdate, GroupSchema,
     AccountCreate, AccountUpdate, AccountSchema,
     FleetCreate, FleetUpdate, FleetSchema,
+    PresetCreate, PresetUpdate, PresetSchema,
     DashboardState
 )
 
@@ -170,6 +171,47 @@ def test_account(account_id: int, db: Session = Depends(get_db)):
     if orch:
         return orch.test_account(a.nt8_account)
     return {"ok": False, "error": "Orchestrator not running"}
+
+
+# ========== PRESETS ==========
+
+@router.get("/presets", response_model=list[PresetSchema])
+def list_presets(db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    return [svc.to_preset_dict(p) for p in svc.get_presets()]
+
+
+@router.post("/presets", response_model=PresetSchema)
+def create_preset(data: PresetCreate, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    p = svc.create_preset(data.model_dump())
+    return svc.to_preset_dict(p)
+
+
+@router.put("/presets/{preset_id}", response_model=PresetSchema)
+def update_preset(preset_id: int, data: PresetUpdate, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    p = svc.update_preset(preset_id, data.model_dump(exclude_none=True))
+    if not p:
+        raise HTTPException(404, "Preset not found")
+    return svc.to_preset_dict(p)
+
+
+@router.delete("/presets/{preset_id}")
+def delete_preset(preset_id: int, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    if not svc.delete_preset(preset_id):
+        raise HTTPException(404, "Preset not found")
+    return {"ok": True}
+
+
+@router.post("/presets/{preset_id}/duplicate", response_model=PresetSchema)
+def duplicate_preset(preset_id: int, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    p = svc.duplicate_preset(preset_id)
+    if not p:
+        raise HTTPException(404, "Preset not found")
+    return svc.to_preset_dict(p)
 
 
 # ========== FLEETS ==========

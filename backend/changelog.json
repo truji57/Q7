@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.57",
+    "date": "2026-09-30",
+    "description": "Sistema de presets por grupo: menu Presets (crear/editar/duplicar/eliminar con id unico AUTOINCREMENT), desplegable de preset en Groups con parametros bloqueados (o manuales en Sin preset), parametros informativos y horario solo lectura en el dashboard; las cuentas ya no se editan desde el dashboard (solo switch ON/OFF), los parametros se propagan desde el grupo/preset a sus cuentas"
+  },
+  {
     "version": "v0.56",
     "date": "2026-09-29",
     "description": "Indicador STATUS del sidebar refleja el estado global: verde solo si Backend/NT8/Engine/MT5 estan todos OK, rojo si cualquiera falla"

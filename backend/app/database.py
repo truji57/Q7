@@ -133,6 +133,7 @@ def _run_migrations():
             "default_sld": "ALTER TABLE groups ADD COLUMN default_sld FLOAT DEFAULT 0.0",
             "default_tpg": "ALTER TABLE groups ADD COLUMN default_tpg FLOAT DEFAULT 0.0",
             "default_slg": "ALTER TABLE groups ADD COLUMN default_slg FLOAT DEFAULT 0.0",
+            "preset_id": "ALTER TABLE groups ADD COLUMN preset_id INTEGER",
         }
 
         # Rename old columns
@@ -214,6 +215,47 @@ def _run_migrations():
                 """))
                 ac.execute(text("INSERT INTO fleet_groups (id, fleet_id, group_id, order_index) SELECT id, fleet_id, group_id, order_index FROM fleet_groups_legacy"))
                 ac.execute(text("DROP TABLE fleet_groups_legacy"))
+                ac.execute(text("PRAGMA foreign_keys=ON"))
+        except Exception:
+            try:
+                conn.execute(text("PRAGMA foreign_keys=ON"))
+            except Exception:
+                pass
+            pass
+
+    # Presets: garantizar que el id sea AUTOINCREMENT (nunca se reutiliza tras borrar).
+    # Si la tabla existe sin AUTOINCREMENT, se reconstruye conservando los datos.
+    if "presets" in inspector.get_table_names():
+        try:
+            sql_row = conn.execute(text("SELECT sql FROM sqlite_master WHERE type='table' AND name='presets'")).scalar()
+            if sql_row and "AUTOINCREMENT" not in sql_row.upper():
+                conn.commit()  # cerrar la transaccion autobegin antes de cambiar isolation_level
+                ac = conn.execution_options(isolation_level="AUTOCOMMIT")
+                ac.execute(text("PRAGMA foreign_keys=OFF"))
+                ac.execute(text("ALTER TABLE presets RENAME TO presets_legacy"))
+                ac.execute(text("""
+                    CREATE TABLE presets (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        name VARCHAR(100) NOT NULL,
+                        ct INTEGER DEFAULT 1,
+                        max_positions INTEGER DEFAULT 6,
+                        tpc FLOAT DEFAULT 1500.0,
+                        slc FLOAT DEFAULT 2000.0,
+                        pdpt FLOAT DEFAULT 1600.0,
+                        pdll FLOAT DEFAULT 2100.0,
+                        tpd FLOAT DEFAULT 0.0,
+                        sld FLOAT DEFAULT 0.0,
+                        tpg FLOAT DEFAULT 0.0,
+                        slg FLOAT DEFAULT 0.0,
+                        created_at DATETIME
+                    )
+                """))
+                ac.execute(text("""
+                    INSERT INTO presets (id, name, ct, max_positions, tpc, slc, pdpt, pdll, tpd, sld, tpg, slg, created_at)
+                    SELECT id, name, ct, max_positions, tpc, slc, pdpt, pdll, tpd, sld, tpg, slg, created_at
+                    FROM presets_legacy
+                """))
+                ac.execute(text("DROP TABLE presets_legacy"))
                 ac.execute(text("PRAGMA foreign_keys=ON"))
         except Exception:
             try:

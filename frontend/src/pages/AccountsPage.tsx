@@ -2,8 +2,21 @@ import { useState, useEffect, Fragment } from 'react';
 import { Plus, Pencil, Trash2, Save, X, TestTube2, ChevronUp, ChevronDown } from 'lucide-react';
 import { api } from '../lib/api';
 import { useStore } from '../store';
-import { Group, Account } from '../types';
+import { Group, Account, Preset } from '../types';
 import ScheduleInput from '../components/ScheduleInput';
+
+const PARAM_DEFS = [
+  { key: 'ct', label: 'CT', gkey: 'default_ct' },
+  { key: 'max_positions', label: 'MXP', gkey: 'default_max_positions' },
+  { key: 'tpc', label: 'TPC', gkey: 'default_tpc' },
+  { key: 'slc', label: 'SLC', gkey: 'default_slc' },
+  { key: 'pdpt', label: 'TPR', gkey: 'default_pdpt' },
+  { key: 'pdll', label: 'SLR', gkey: 'default_pdll' },
+  { key: 'tpd', label: 'TPD', gkey: 'default_tpd' },
+  { key: 'sld', label: 'SLD', gkey: 'default_sld' },
+  { key: 'tpg', label: 'TPG', gkey: 'default_tpg' },
+  { key: 'slg', label: 'SLG', gkey: 'default_slg' },
+];
 
 function FormField({ label, value, onChange, type = 'text', min, placeholder }: any) {
   return (
@@ -21,6 +34,7 @@ type ModalState =
 
 export default function AccountsPage() {
   const [groups, setGroups] = useState<Group[]>([]);
+  const [presets, setPresets] = useState<Preset[]>([]);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [groupForm, setGroupForm] = useState({     name: '', direction: 'BOTH', mode: 'SEQUENTIAL', stop_on_reset: true, reset_mode: 'diario' });
@@ -35,7 +49,11 @@ export default function AccountsPage() {
   const nt8Connected = useStore((s) => s.state?.nt8_connected || false);
 
   const load = async () => {
-    try { const g = await api.getGroups(); setGroups(g); } catch {}
+    try {
+      const [g, p] = await Promise.all([api.getGroups(), api.getPresets()]);
+      setGroups(g);
+      setPresets(p);
+    } catch {}
   };
 
   useEffect(() => { load(); }, []);
@@ -230,42 +248,45 @@ const deleteGroup = (id: number) => {
             )}
           </div>
 
-          {/* Defaults */}
-          <div className="px-4 py-2 border-b border-[#1c1c2a] flex gap-3 text-[10px] text-zinc-500 items-center flex-wrap">
-            <span>CT: <input type="number" className="w-16 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_ct} onChange={(e) => updateGroupField(g.id, 'default_ct', parseInt(e.target.value) || 1)} /></span>
-            <span>MXP: <input type="number" className="w-14 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_max_positions || 6} onChange={(e) => updateGroupField(g.id, 'default_max_positions', parseInt(e.target.value) || 6)} /></span>
-            <span>TPC: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_tpc} onChange={(e) => updateGroupField(g.id, 'default_tpc', parseFloat(e.target.value) || 0)} /></span>
-            <span>SLC: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_slc} onChange={(e) => updateGroupField(g.id, 'default_slc', parseFloat(e.target.value) || 0)} /></span>
-            <span>TPR: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_pdpt} onChange={(e) => updateGroupField(g.id, 'default_pdpt', parseFloat(e.target.value) || 0)} /></span>
-            <span>SLR: <input type="number" className="w-20 text-center bg-transparent border border-[#2a2a3a] rounded px-1" value={g.default_pdll} onChange={(e) => updateGroupField(g.id, 'default_pdll', parseFloat(e.target.value) || 0)} /></span>
-            <span>TPD: <input type="number" className="w-20 text-center bg-transparent border border-[#6b7280]/30 rounded px-1" value={g.default_tpd || 0} onChange={(e) => updateGroupField(g.id, 'default_tpd', parseFloat(e.target.value) || 0)} /></span>
-            <span>SLD: <input type="number" className="w-20 text-center bg-transparent border border-[#6b7280]/30 rounded px-1" value={g.default_sld || 0} onChange={(e) => updateGroupField(g.id, 'default_sld', parseFloat(e.target.value) || 0)} /></span>
-            <span>TPG: <input type="number" className="w-20 text-center bg-transparent border border-[#6b7280]/30 rounded px-1" value={g.default_tpg || 0} onChange={(e) => updateGroupField(g.id, 'default_tpg', parseFloat(e.target.value) || 0)} /></span>
-            <span>SLG: <input type="number" className="w-20 text-center bg-transparent border border-[#6b7280]/30 rounded px-1" value={g.default_slg || 0} onChange={(e) => updateGroupField(g.id, 'default_slg', parseFloat(e.target.value) || 0)} /></span>
-            <button
-              onClick={() => setModal({
-                kind: 'confirm',
-                title: 'Apply to all',
-                message: '¿Aplicar los defaults a TODAS las cuentas de este grupo?',
-                confirmLabel: 'Aplicar',
-                onConfirm: async () => {
-                  try {
-                    for (const a of g.accounts) {
-                      await api.updateAccount(a.id, {
-                        ct: g.default_ct, max_positions: g.default_max_positions, tpc: g.default_tpc, slc: g.default_slc,
-                        pdll: g.default_pdll, pdpt: g.default_pdpt,
-                        tpd: g.default_tpd, sld: g.default_sld,
-                        tpg: g.default_tpg, slg: g.default_slg
-                      });
-                    }
-                    load();
-                  } catch (e: any) { setModal({ kind: 'info', title: 'Error', message: e.message }); }
-                },
+          {/* Preset + Parametros */}
+          <div className="px-4 py-3 border-b border-[#1c1c2a]">
+            <div className="flex items-center gap-3 text-xs flex-wrap">
+              <span className="text-zinc-400">Preset</span>
+              <select
+                value={g.preset_id ?? 0}
+                onChange={(e) => updateGroupField(g.id, 'preset_id', Number(e.target.value))}
+                className="text-xs bg-[#1a1a26] border border-[#2a2a3a] rounded-md px-2 py-1.5 text-zinc-200"
+              >
+                <option value={0}>Sin preset</option>
+                {presets.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              {g.preset_id ? (
+                <span className="text-[10px] text-zinc-500">Bloqueado — editar en el menu Presets</span>
+              ) : (
+                <span className="text-[10px] text-zinc-600">Parametros manuales del grupo</span>
+              )}
+            </div>
+
+            <div className="flex gap-3 text-[10px] text-zinc-500 items-center flex-wrap mt-2">
+              {PARAM_DEFS.map((def) => {
+                const preset = presets.find((p) => p.id === g.preset_id);
+                const value = preset ? (preset as any)[def.key] : (g as any)[def.gkey];
+                return (
+                  <span key={def.key}>
+                    {def.label}:{' '}
+                    <input
+                      type="number"
+                      disabled={!!preset}
+                      className={`w-16 text-center bg-transparent border border-[#2a2a3a] rounded px-1 ${preset ? 'text-zinc-600 cursor-not-allowed' : ''}`}
+                      value={value ?? 0}
+                      onChange={(e) => updateGroupField(g.id, def.gkey, parseFloat(e.target.value) || 0)}
+                    />
+                  </span>
+                );
               })}
-              className="ml-auto px-2 py-1 bg-[#6b7280]/10 border border-[#6b7280]/30 text-zinc-300 rounded text-[10px] font-semibold hover:bg-[#6b7280]/20"
-            >
-              Apply to all
-            </button>
+            </div>
           </div>
 
           {/* Accounts */}

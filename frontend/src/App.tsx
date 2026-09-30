@@ -6,6 +6,7 @@ import ConfigPage from './pages/ConfigPage';
 import StatisticsPage from './pages/StatisticsPage';
 import FleetsPage from './pages/FleetsPage';
 import HistoryPage from './pages/HistoryPage';
+import PresetsPage from './pages/PresetsPage';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/stats" element={<StatisticsPage />} />
         <Route path="/fleets" element={<FleetsPage />} />
+        <Route path="/presets" element={<PresetsPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/config" element={<ConfigPage />} />
       </Routes>

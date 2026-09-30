@@ -100,6 +100,9 @@ class GroupSchema(BaseModel):
     default_sld: float = 0.0
     default_tpg: float = 0.0
     default_slg: float = 0.0
+    preset_id: Optional[int] = None
+    preset_name: Optional[str] = None
+    params: Optional[dict] = None
     accounts: List[AccountSchema] = []
 
     class Config:
@@ -112,6 +115,7 @@ class GroupCreate(BaseModel):
     mode: str = "SEQUENTIAL"
     stop_on_reset: bool = True
     reset_mode: str = "diario"
+    preset_id: Optional[int] = None
 
 
 class GroupUpdate(BaseModel):
@@ -122,6 +126,7 @@ class GroupUpdate(BaseModel):
     stop_on_reset: Optional[bool] = None
     reset_mode: Optional[str] = None
     include_in_fleet: Optional[bool] = None
+    preset_id: Optional[int] = None
     schedule_enabled: Optional[bool] = None
     schedule_start_h: Optional[int] = Field(default=None, ge=0, le=23)
     schedule_start_m: Optional[int] = Field(default=None, ge=0, le=59)
@@ -198,3 +203,49 @@ class SymbolMapSchema(BaseModel):
 class SymbolMapUpdate(BaseModel):
     symbols: List[dict] = []
     default_instrument: Optional[str] = None
+
+
+class PresetCreate(BaseModel):
+    name: str
+    ct: Optional[int] = None
+    max_positions: Optional[int] = None
+    tpc: Optional[float] = None
+    slc: Optional[float] = None
+    pdpt: Optional[float] = None
+    pdll: Optional[float] = None
+    tpd: Optional[float] = None
+    sld: Optional[float] = None
+    tpg: Optional[float] = None
+    slg: Optional[float] = None
+
+
+class PresetUpdate(BaseModel):
+    name: Optional[str] = None
+    ct: Optional[int] = None
+    max_positions: Optional[int] = None
+    tpc: Optional[float] = None
+    slc: Optional[float] = None
+    pdpt: Optional[float] = None
+    pdll: Optional[float] = None
+    tpd: Optional[float] = None
+    sld: Optional[float] = None
+    tpg: Optional[float] = None
+    slg: Optional[float] = None
+
+
+class PresetSchema(BaseModel):
+    id: int
+    name: str
+    ct: int
+    max_positions: int
+    tpc: float
+    slc: float
+    pdpt: float
+    pdll: float
+    tpd: float
+    sld: float
+    tpg: float
+    slg: float
+
+    class Config:
+        from_attributes = True

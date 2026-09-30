@@ -29,6 +29,21 @@ export interface Account {
   trades_today: number;
 }
 
+export interface Preset {
+  id: number;
+  name: string;
+  ct: number;
+  max_positions: number;
+  tpc: number;
+  slc: number;
+  pdpt: number;
+  pdll: number;
+  tpd: number;
+  sld: number;
+  tpg: number;
+  slg: number;
+}
+
 export interface Group {
   id: number;
   name: string;
@@ -53,6 +68,20 @@ export interface Group {
   default_sld: number;
   default_tpg: number;
   default_slg: number;
+  preset_id: number | null;
+  preset_name: string | null;
+  params: {
+    ct: number;
+    max_positions: number;
+    tpc: number;
+    slc: number;
+    pdpt: number;
+    pdll: number;
+    tpd: number;
+    sld: number;
+    tpg: number;
+    slg: number;
+  } | null;
   accounts: Account[];
 }
 

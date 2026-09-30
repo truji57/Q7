@@ -40,6 +40,13 @@ export const api = {
   reorderAccounts: (groupId: number, accountIds: number[]) => request<any>(`/groups/${groupId}/accounts/order`, { method: 'PUT', body: JSON.stringify({ account_ids: accountIds }) }),
   testAccount: (id: number) => request<any>(`/accounts/${id}/test`, { method: 'POST' }),
 
+  // Presets
+  getPresets: () => request<any[]>('/presets'),
+  createPreset: (data: any) => request<any>('/presets', { method: 'POST', body: JSON.stringify(data) }),
+  updatePreset: (id: number, data: any) => request<any>(`/presets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePreset: (id: number) => request<any>(`/presets/${id}`, { method: 'DELETE' }),
+  duplicatePreset: (id: number) => request<any>(`/presets/${id}/duplicate`, { method: 'POST' }),
+
   getConfig: () => request<any>('/config'),
   updateConfig: (data: any) => request<any>('/config', { method: 'PUT', body: JSON.stringify(data) }),
   getSymbols: () => request<any>('/symbols'),

@@ -40,8 +40,11 @@ class Group(Base):
 
     created_at = Column(DateTime, default=datetime.now)
 
+    preset_id = Column(Integer, ForeignKey("presets.id"), nullable=True)
+
     accounts = relationship("Account", back_populates="group", cascade="all, delete-orphan")
     fleet_links = relationship("FleetGroup", back_populates="group", cascade="all, delete-orphan")
+    preset = relationship("Preset")
 
 
 class Account(Base):
@@ -222,3 +225,31 @@ class FleetGroup(Base):
 
     fleet = relationship("Fleet", back_populates="members")
     group = relationship("Group", back_populates="fleet_links")
+
+
+class Preset(Base):
+    """Preset de parametros predefinidos (CT/MXP/TPC/SLC/TPR/SLR/TPD/SLD/TPG/SLG).
+
+    El id es el identificador unico estable del preset: sirve para referenciarlo
+    desde cualquier sitio (cuentas/grupos) y para las estadisticas por preset.
+    """
+    __tablename__ = "presets"
+    # AUTOINCREMENT real en SQLite: el id nunca se reutiliza tras borrar,
+    # para que los stats/vinculos de un preset no se mezclen con uno nuevo.
+    __table_args__ = {"sqlite_autoincrement": True}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+
+    ct = Column(Integer, default=1)
+    max_positions = Column(Integer, default=6)
+    tpc = Column(Float, default=1500.0)
+    slc = Column(Float, default=2000.0)
+    pdpt = Column(Float, default=1600.0)  # TPR
+    pdll = Column(Float, default=2100.0)  # SLR
+    tpd = Column(Float, default=0.0)
+    sld = Column(Float, default=0.0)
+    tpg = Column(Float, default=0.0)
+    slg = Column(Float, default=0.0)
+
+    created_at = Column(DateTime, default=datetime.now)

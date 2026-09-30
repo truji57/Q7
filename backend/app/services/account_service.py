@@ -3,7 +3,10 @@ Q7 Backend - Account & Group Service
 """
 from datetime import date
 from sqlalchemy.orm import Session, joinedload
-from app.models.account import Group, Account, TradeLog, Config, Fleet, FleetGroup
+from app.models.account import Group, Account, TradeLog, Config, Fleet, FleetGroup, Preset
+
+# Parametros de trading que un preset define y que se aplican a las cuentas.
+PARAM_FIELDS = ["ct", "max_positions", "tpc", "slc", "pdpt", "pdll", "tpd", "sld", "tpg", "slg"]
 
 
 class AccountService:
@@ -28,12 +31,53 @@ class AccountService:
     def update_group(self, group_id: int, data: dict) -> Group | None:
         g = self.db.query(Group).filter(Group.id == group_id).first()
         if not g: return None
+
+        params_changed = False
         for k, v in data.items():
-            if v is not None and hasattr(g, k):
+            if v is None:
+                continue
+            if k == "preset_id":
+                g.preset_id = v or None
+                params_changed = True
+                continue
+            if hasattr(g, k):
                 setattr(g, k, v)
+                if k.startswith("default_"):
+                    params_changed = True
+
         self.db.commit()
         self.db.refresh(g)
+
+        if params_changed:
+            self._propagate_group_params(g)
         return g
+
+    def _group_effective_params(self, group: Group) -> dict:
+        """Parametros efectivos de un grupo: los del preset asignado (si hay) o los manuales."""
+        if group.preset_id:
+            preset = self.db.query(Preset).filter(Preset.id == group.preset_id).first()
+            if preset:
+                return {f: getattr(preset, f) for f in PARAM_FIELDS}
+        return {
+            "ct": group.default_ct,
+            "max_positions": group.default_max_positions,
+            "tpc": group.default_tpc,
+            "slc": group.default_slc,
+            "pdpt": group.default_pdpt,
+            "pdll": group.default_pdll,
+            "tpd": group.default_tpd,
+            "sld": group.default_sld,
+            "tpg": group.default_tpg,
+            "slg": group.default_slg,
+        }
+
+    def _propagate_group_params(self, group: Group):
+        """Aplica los parametros efectivos del grupo a TODAS sus cuentas."""
+        eff = self._group_effective_params(group)
+        for a in group.accounts:
+            for f, v in eff.items():
+                setattr(a, f, v)
+        self.db.commit()
 
     def delete_group(self, group_id: int) -> bool:
         g = self.db.query(Group).filter(Group.id == group_id).first()
@@ -61,12 +105,7 @@ class AccountService:
                 .order_by(Account.order_index.desc(), Account.id.desc()).first())
         data.setdefault("order_index", (last.order_index if last else 0) + 1)
 
-        defaults = {
-            "ct": g.default_ct, "max_positions": g.default_max_positions,
-            "tpc": g.default_tpc, "slc": g.default_slc,
-            "pdll": g.default_pdll, "pdpt": g.default_pdpt,
-            "tpd": g.default_tpd or 0, "sld": g.default_sld or 0,
-        }
+        defaults = self._group_effective_params(g)
         for k, v in defaults.items():
             if k not in data or data[k] is None:
                 data[k] = v
@@ -130,6 +169,8 @@ class AccountService:
 
     def to_group_dict(self, g: Group) -> dict:
         self.db.refresh(g)
+        eff = self._group_effective_params(g)
+        preset_name = g.preset.name if g.preset else None
         return {
             "id": g.id,
             "name": g.name,
@@ -139,6 +180,9 @@ class AccountService:
             "stop_on_reset": g.stop_on_reset,
             "reset_mode": g.reset_mode or "diario",
             "include_in_fleet": g.include_in_fleet,
+            "preset_id": g.preset_id,
+            "preset_name": preset_name,
+            "params": eff,
             "schedule_enabled": g.schedule_enabled,
             "schedule_start_h": g.schedule_start_h,
             "schedule_start_m": g.schedule_start_m,
@@ -285,4 +329,79 @@ class AccountService:
             "schedule_end_h": f.schedule_end_h,
             "schedule_end_m": f.schedule_end_m,
             "groups": [{**self.to_group_dict(m.group), "fleet_order": m.order_index} for m in members],
+        }
+
+    # ========== PRESETS ==========
+
+    def get_presets(self) -> list[Preset]:
+        return self.db.query(Preset).order_by(Preset.id).all()
+
+    def get_preset(self, preset_id: int) -> Preset | None:
+        return self.db.query(Preset).filter(Preset.id == preset_id).first()
+
+    def create_preset(self, data: dict) -> Preset:
+        p = Preset(**data)
+        self.db.add(p)
+        self.db.commit()
+        self.db.refresh(p)
+        return p
+
+    def update_preset(self, preset_id: int, data: dict) -> Preset | None:
+        p = self.db.query(Preset).filter(Preset.id == preset_id).first()
+        if not p:
+            return None
+        for k, v in data.items():
+            if v is not None and hasattr(p, k):
+                setattr(p, k, v)
+        self.db.commit()
+        self.db.refresh(p)
+        # Propagar a los grupos que usan este preset
+        for g in self.db.query(Group).filter(Group.preset_id == p.id).all():
+            self._propagate_group_params(g)
+        return p
+
+    def delete_preset(self, preset_id: int) -> bool:
+        p = self.db.query(Preset).filter(Preset.id == preset_id).first()
+        if not p:
+            return False
+        # Los grupos que lo usaban vuelven a "Sin preset" (defaults manuales)
+        for g in self.db.query(Group).filter(Group.preset_id == preset_id).all():
+            g.preset_id = None
+            self.db.commit()
+            self._propagate_group_params(g)
+        self.db.delete(p)
+        self.db.commit()
+        return True
+
+    def duplicate_preset(self, preset_id: int) -> Preset | None:
+        p = self.db.query(Preset).filter(Preset.id == preset_id).first()
+        if not p:
+            return None
+        copy = Preset(
+            name=(p.name or "") + " (copia)",
+            ct=p.ct, max_positions=p.max_positions,
+            tpc=p.tpc, slc=p.slc,
+            pdpt=p.pdpt, pdll=p.pdll,
+            tpd=p.tpd, sld=p.sld,
+            tpg=p.tpg, slg=p.slg,
+        )
+        self.db.add(copy)
+        self.db.commit()
+        self.db.refresh(copy)
+        return copy
+
+    def to_preset_dict(self, p: Preset) -> dict:
+        return {
+            "id": p.id,
+            "name": p.name,
+            "ct": p.ct,
+            "max_positions": p.max_positions,
+            "tpc": p.tpc,
+            "slc": p.slc,
+            "pdpt": p.pdpt,
+            "pdll": p.pdll,
+            "tpd": p.tpd,
+            "sld": p.sld,
+            "tpg": p.tpg,
+            "slg": p.slg,
         }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { api } from '../lib/api';
 import { Group, Account } from '../types';
@@ -68,29 +68,6 @@ function EditCell({ value, onSave, prefix, warn, warnTitle }: EditCellProps) {
       onBlur={() => { setEditing(false); onSave(val); }}
       onKeyDown={(e) => { if (e.key === 'Enter') { setEditing(false); onSave(val); } }}
       onChange={(e) => setVal(parseFloat(e.target.value) || 0)}
-    />
-  );
-}
-
-function BlurInput({ value, onSave, className, min, max, ...rest }: { value: number; onSave: (v: number) => void; className?: string; min?: number; max?: number; [key: string]: any }) {
-  const [local, setLocal] = useState(String(value));
-  const doSave = useCallback(() => {
-    let n = parseFloat(local);
-    if (isNaN(n)) return;
-    if (typeof min === 'number') n = Math.max(min, n);
-    if (typeof max === 'number') n = Math.min(max, n);
-    setLocal(String(n));
-    if (n !== value) onSave(n);
-  }, [local, value, onSave, min, max]);
-  return (
-    <input
-      type="number"
-      value={local}
-      onChange={(e) => setLocal(e.target.value)}
-      onBlur={doSave}
-      onKeyDown={(e) => { if (e.key === 'Enter') doSave(); }}
-      className={className}
-      {...rest}
     />
   );
 }
@@ -202,24 +179,26 @@ export default function DashboardPage() {
                     )}
                   </div>
                   <div className="text-[11px] text-zinc-500 mt-0.5">{labelParts.join(' · ')} · {pendingCount} pending</div>
+                  {group.params && (
+                    <div className="text-[10px] text-zinc-600 mt-1 flex flex-wrap gap-x-2">
+                      {group.preset_name ? (
+                        <span className="text-zinc-400">Preset: {group.preset_name}</span>
+                      ) : (
+                        <span>Sin preset</span>
+                      )}
+                      <span>
+                        CT {group.params.ct} · MXP {group.params.max_positions} · TPC {group.params.tpc} · SLC {group.params.slc} · TPR {group.params.pdpt} · SLR {group.params.pdll} · TPD {group.params.tpd} · SLD {group.params.sld} · TPG {group.params.tpg} · SLG {group.params.slg}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
                 {group.schedule_enabled && (
-                  <div className="flex items-center gap-1 text-[10px] text-zinc-400">
-                    <BlurInput className="w-10 text-center bg-[#1a1a26] border border-[#2a2a3a] rounded px-1 text-xs" min={0} max={23}
-                      value={group.schedule_start_h} onSave={async (v) => { await api.updateGroup(group.id, { schedule_start_h: v }); }} />
-                    <span>:</span>
-                    <BlurInput className="w-10 text-center bg-[#1a1a26] border border-[#2a2a3a] rounded px-1 text-xs" min={0} max={59}
-                      value={group.schedule_start_m} onSave={async (v) => { await api.updateGroup(group.id, { schedule_start_m: v }); }} />
-                    <span className="mx-1">-</span>
-                    <BlurInput className="w-10 text-center bg-[#1a1a26] border border-[#2a2a3a] rounded px-1 text-xs" min={0} max={23}
-                      value={group.schedule_end_h} onSave={async (v) => { await api.updateGroup(group.id, { schedule_end_h: v }); }} />
-                    <span>:</span>
-                    <BlurInput className="w-10 text-center bg-[#1a1a26] border border-[#2a2a3a] rounded px-1 text-xs" min={0} max={59}
-                      value={group.schedule_end_m} onSave={async (v) => { await api.updateGroup(group.id, { schedule_end_m: v }); }} />
-                  </div>
+                  <span className="text-xs text-zinc-400 font-mono mr-3">
+                    {String(group.schedule_start_h).padStart(2, '0')}:{String(group.schedule_start_m).padStart(2, '0')} - {String(group.schedule_end_h).padStart(2, '0')}:{String(group.schedule_end_m).padStart(2, '0')}
+                  </span>
                 )}
                 {group.active ? (
                   <button onClick={() => handleDeactivate(group.id)} className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded font-semibold hover:bg-red-500/20">
@@ -272,7 +251,7 @@ export default function DashboardPage() {
             {/* Accounts Table */}
             {isOpen && (
               <div className="overflow-x-auto border-t border-[#1a1a2a]">
-                <table className="w-full text-xs table-fixed min-w-[1100px]">
+                <table className="w-full text-xs table-fixed min-w-[880px]">
                   <thead>
                     <tr className="text-zinc-500 border-b border-[#1a1a2a]">
                       <th className="text-left py-2 px-2 font-medium w-[70px]" title="Estado de la cuenta">ESTADO</th>
@@ -285,17 +264,7 @@ export default function DashboardPage() {
                       <th className="text-center py-2 px-2 font-medium w-[90px]" title="PNL del dia actual">PNL DIA</th>
                       <th className="text-center py-2 px-2 font-medium w-[90px]" title="PNL de la ronda actual">PNL RONDA</th>
                       <th className="text-center py-2 px-2 font-medium w-[90px]" title="PNL flotante de posiciones abiertas">OPEN</th>
-                      <th className="text-center py-2 px-2 font-medium w-[70px] border-l-2 border-zinc-500/40" title="Contratos por operacion">CT</th>
-                      <th className="text-center py-2 px-2 font-medium w-[70px]" title="Maximo de posiciones por ciclo">MXP</th>
-                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Take Profit por ciclo">TPC</th>
-                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Stop Loss por ciclo">SLC</th>
-                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Take Profit por ronda">TPR</th>
-                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Stop Loss por ronda">SLR</th>
-                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Take Profit diario (pausa la cuenta el resto del dia)">TPD</th>
-                      <th className="text-center py-2 px-2 font-medium w-[80px]" title="Stop Loss diario (pausa la cuenta el resto del dia)">SLD</th>
-                      <th className="text-center py-2 px-2 font-medium w-[65px]" title="Take Profit Global (desactiva cuenta)">TPG</th>
-                      <th className="text-center py-2 px-2 font-medium w-[65px]" title="Stop Loss Global (desactiva cuenta)">SLG</th>
-                      <th className="text-center py-2 px-2 font-medium" title="Cuenta habilitada">ON</th>
+                      <th className="text-center py-2 px-2 font-medium w-[60px] border-l-2 border-zinc-500/40" title="Cuenta habilitada">ON</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -339,17 +308,7 @@ export default function DashboardPage() {
                         <td className={`py-2 px-2 text-center truncate ${balancesUnknown ? 'text-yellow-400' : (acc.open_pnl || 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
                           {balancesUnknown ? '???' : `$${(acc.open_pnl || 0).toFixed(0)}`}
                         </td>
-                        <td className="py-2 px-2 text-center border-l-2 border-zinc-500/20"><EditCell value={acc.ct} onSave={(v) => updateAccountField(acc.id, 'ct', v)} /></td>
-                        <td className="py-2 px-2 text-center"><EditCell value={acc.max_positions || 6} onSave={(v) => updateAccountField(acc.id, 'max_positions', v)} /></td>
-                        <td className="py-2 px-2 text-center"><EditCell value={acc.tpc} onSave={(v) => updateAccountField(acc.id, 'tpc', v)} /></td>
-                        <td className="py-2 px-2 text-center"><EditCell value={acc.slc} onSave={(v) => updateAccountField(acc.id, 'slc', v)} /></td>
-                        <td className="py-2 px-2 text-center"><EditCell value={acc.pdpt} onSave={(v) => updateAccountField(acc.id, 'pdpt', v)} /></td>
-                        <td className="py-2 px-2 text-center"><EditCell value={acc.pdll} onSave={(v) => updateAccountField(acc.id, 'pdll', v)} /></td>
-                        <td className="py-2 px-2 text-center"><EditCell value={acc.tpd || 0} onSave={(v) => updateAccountField(acc.id, 'tpd', v)} /></td>
-                        <td className="py-2 px-2 text-center"><EditCell value={acc.sld || 0} onSave={(v) => updateAccountField(acc.id, 'sld', v)} /></td>
-                        <td className="py-2 px-2 text-center"><EditCell value={acc.tpg || 0} onSave={(v) => updateAccountField(acc.id, 'tpg', v)} /></td>
-                        <td className="py-2 px-2 text-center"><EditCell value={acc.slg || 0} onSave={(v) => updateAccountField(acc.id, 'slg', v)} /></td>
-                        <td className="py-2 px-2 text-center">
+                        <td className="py-2 px-2 text-center border-l-2 border-zinc-500/20">
                           <button
                             onClick={() => toggleAccount(acc.id, acc.enabled)}
                             className={`w-8 h-4 rounded-full transition-colors ${acc.enabled ? 'bg-green-500' : 'bg-zinc-700'}`}
