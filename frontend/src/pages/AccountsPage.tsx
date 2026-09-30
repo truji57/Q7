@@ -1,5 +1,5 @@
 import { useState, useEffect, Fragment } from 'react';
-import { Plus, Pencil, Trash2, Save, X, TestTube2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, TestTube2, ChevronUp, ChevronDown } from 'lucide-react';
 import { api } from '../lib/api';
 import { useStore } from '../store';
 import { Group, Account } from '../types';
@@ -110,6 +110,20 @@ const deleteGroup = (id: number) => {
         catch (e: any) { setModal({ kind: 'info', title: 'Error', message: e.message }); }
       },
     });
+  };
+
+  const moveAccount = async (g: Group, accId: number, dir: -1 | 1) => {
+    const list = [...g.accounts].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0) || a.id - b.id);
+    const index = list.findIndex((x) => x.id === accId);
+    if (index < 0) return;
+    const j = index + dir;
+    if (j < 0 || j >= list.length) return;
+    const next = [...list];
+    [next[index], next[j]] = [next[j], next[index]];
+    try {
+      await api.reorderAccounts(g.id, next.map((x) => x.id));
+      load();
+    } catch {}
   };
 
   const testAccount = async (id: number) => {
@@ -293,9 +307,19 @@ const deleteGroup = (id: number) => {
               </div>
             )}
 
-            {g.accounts.map((a) => (
+            {g.accounts.map((a, i) => (
               <div key={a.id} className="flex items-center justify-between py-2 border-b border-[#111122] last:border-0 text-xs">
                 <div className="flex items-center gap-2">
+                  <div className="flex flex-col shrink-0">
+                    <button title="Subir" disabled={i === 0} onClick={() => moveAccount(g, a.id, -1)}
+                      className={`p-0.5 leading-none ${i === 0 ? 'text-zinc-700 cursor-not-allowed' : 'text-zinc-500 hover:text-zinc-200'}`}>
+                      <ChevronUp size={11} />
+                    </button>
+                    <button title="Bajar" disabled={i === g.accounts.length - 1} onClick={() => moveAccount(g, a.id, 1)}
+                      className={`p-0.5 leading-none ${i === g.accounts.length - 1 ? 'text-zinc-700 cursor-not-allowed' : 'text-zinc-500 hover:text-zinc-200'}`}>
+                      <ChevronDown size={11} />
+                    </button>
+                  </div>
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: a.color }} />
                   {editingAccId === a.id ? (
                     <div className="flex items-center gap-1">

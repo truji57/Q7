@@ -153,6 +153,13 @@ def delete_account(account_id: int, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
+@router.put("/groups/{group_id}/accounts/order")
+def reorder_accounts(group_id: int, data: dict, db: Session = Depends(get_db)):
+    svc = AccountService(db)
+    svc.reorder_accounts(group_id, data.get("account_ids", []))
+    return {"ok": True}
+
+
 @router.post("/accounts/{account_id}/test")
 def test_account(account_id: int, db: Session = Depends(get_db)):
     from app.models.account import Account

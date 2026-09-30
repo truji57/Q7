@@ -95,6 +95,14 @@ class AccountService:
         self.db.commit()
         return True
 
+    def reorder_accounts(self, group_id: int, account_ids: list):
+        accounts = self.db.query(Account).filter(Account.group_id == group_id).all()
+        order = {aid: i for i, aid in enumerate(account_ids)}
+        for a in accounts:
+            if a.id in order:
+                a.order_index = order[a.id]
+        self.db.commit()
+
     def reset_daily(self):
         today = date.today()
         accounts = self.db.query(Account).filter(Account.last_reset != today).all()
@@ -146,7 +154,7 @@ class AccountService:
             "default_sld": g.default_sld or 0,
             "default_tpg": g.default_tpg or 0,
             "default_slg": g.default_slg or 0,
-            "accounts": [self.to_account_dict(a) for a in g.accounts],
+            "accounts": [self.to_account_dict(a) for a in sorted(g.accounts, key=lambda a: (a.order_index or 0, a.id))],
         }
 
     def to_account_dict(self, a: Account) -> dict:

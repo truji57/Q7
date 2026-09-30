@@ -255,12 +255,12 @@ export default function FleetsPage() {
                     <span className="text-zinc-600">({g.accounts.length} cuentas)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {f.mode === 'serie' && (
-                      <div className="flex items-center gap-0.5 mr-1">
-                        <button title="Subir prioridad" onClick={() => moveGroup(f, idx, -1)} className="p-0.5 text-zinc-500 hover:text-zinc-300"><ChevronUp size={12} /></button>
-                        <button title="Bajar prioridad" onClick={() => moveGroup(f, idx, 1)} className="p-0.5 text-zinc-500 hover:text-zinc-300"><ChevronDown size={12} /></button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-0.5 mr-1">
+                      <button title="Subir prioridad" disabled={idx === 0} onClick={() => moveGroup(f, idx, -1)}
+                        className={`p-0.5 ${idx === 0 ? 'text-zinc-700 cursor-not-allowed' : 'text-zinc-500 hover:text-zinc-300'}`}><ChevronUp size={12} /></button>
+                      <button title="Bajar prioridad" disabled={idx === f.groups.length - 1} onClick={() => moveGroup(f, idx, 1)}
+                        className={`p-0.5 ${idx === f.groups.length - 1 ? 'text-zinc-700 cursor-not-allowed' : 'text-zinc-500 hover:text-zinc-300'}`}><ChevronDown size={12} /></button>
+                    </div>
                     <button title="Quitar grupo" onClick={() => removeGroup(f.id, g.id)} className="p-1 text-red-400 hover:text-red-300"><Trash2 size={11} /></button>
                   </div>
                 </div>

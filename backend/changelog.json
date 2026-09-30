@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.54",
+    "date": "2026-09-29",
+    "description": "Reordenar cuentas dentro de grupos (flechas arriba/abajo + endpoint PUT /groups/{id}/accounts/order, to_group_dict ordena por order_index) y reordenar grupos en flotas visible tambien en modo paralelo"
+  },
+  {
     "version": "v0.53",
     "date": "2026-09-29",
     "description": "Fix PNL DIA: daily_realized usaba GrossRealizedProfitLoss (acumulaba dias previos) y ahora usa RealizedProfitLoss (neto diario). Nuevo Q7_SignalGenerator_Backtest.mq5 para backtest de señales en el Strategy Tester (1 señal = 1 orden con TP/SL en puntos, horario y max posiciones) [Requiere recompilar el AddOn en NT8]"

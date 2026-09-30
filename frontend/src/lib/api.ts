@@ -37,6 +37,7 @@ export const api = {
   createAccount: (groupId: number, data: any) => request<any>(`/groups/${groupId}/accounts`, { method: 'POST', body: JSON.stringify(data) }),
   updateAccount: (id: number, data: any) => request<any>(`/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteAccount: (id: number) => request<any>(`/accounts/${id}`, { method: 'DELETE' }),
+  reorderAccounts: (groupId: number, accountIds: number[]) => request<any>(`/groups/${groupId}/accounts/order`, { method: 'PUT', body: JSON.stringify({ account_ids: accountIds }) }),
   testAccount: (id: number) => request<any>(`/accounts/${id}/test`, { method: 'POST' }),
 
   getConfig: () => request<any>('/config'),
