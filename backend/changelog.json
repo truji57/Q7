@@ -1,5 +1,10 @@
 [
   {
+    "version": "v0.58",
+    "date": "2026-09-30",
+    "description": "Fix barra de progreso del dashboard: el total usa todas las cuentas del grupo (siempre fijo) y cuenta como completadas las que no estan en PENDING/TRADING, en vez de filtrar por habilitadas"
+  },
+  {
     "version": "v0.57",
     "date": "2026-09-30",
     "description": "Sistema de presets por grupo: menu Presets (crear/editar/duplicar/eliminar con id unico AUTOINCREMENT), desplegable de preset en Groups con parametros bloqueados (o manuales en Sin preset), parametros informativos y horario solo lectura en el dashboard; las cuentas ya no se editan desde el dashboard (solo switch ON/OFF), los parametros se propagan desde el grupo/preset a sus cuentas"

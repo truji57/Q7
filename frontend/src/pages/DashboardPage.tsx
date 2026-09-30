@@ -134,9 +134,9 @@ export default function DashboardPage() {
 
   const renderGroup = (group: Group) => {
         const isOpen = expanded.has(group.id);
-        const activeAccounts = group.accounts.filter(a => a.enabled);
-        const doneCount = activeAccounts.filter(a => a.status === 'TP_TOUCHED' || a.status === 'SL_TOUCHED').length;
-        const pendingCount = activeAccounts.filter(a => a.status === 'PENDING' || a.status === 'TRADING').length;
+        const totalAccounts = group.accounts.length;
+        const doneCount = group.accounts.filter(a => a.status !== 'PENDING' && a.status !== 'TRADING').length;
+        const pendingCount = group.accounts.filter(a => a.status === 'PENDING' || a.status === 'TRADING').length;
 
         // Check if group is in schedule
         let inSchedule = true;
@@ -157,7 +157,7 @@ export default function DashboardPage() {
             group.direction === 'BOTH' ? 'Ambas' : group.direction,
             resetLabel,
             group.mode === 'SEQUENTIAL' ? 'Secuencial' : 'Paralelo',
-            `${activeAccounts.length} ctas`,
+            `${totalAccounts} ctas`,
           ].filter(Boolean);
 
         return (
@@ -239,12 +239,12 @@ export default function DashboardPage() {
             </div>
 
             {/* Progress */}
-            {activeAccounts.length > 0 && (
+            {totalAccounts > 0 && (
               <div className="px-4 pb-1">
                 <div className="h-1 bg-[#1a1a2a] rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${(doneCount / activeAccounts.length) * 100}%` }} />
+                  <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${(doneCount / totalAccounts) * 100}%` }} />
                 </div>
-                <div className="text-[10px] text-zinc-600 mt-1">{doneCount}/{activeAccounts.length} cuentas completadas</div>
+                <div className="text-[10px] text-zinc-600 mt-1">{doneCount}/{totalAccounts} cuentas completadas</div>
               </div>
             )}
 
